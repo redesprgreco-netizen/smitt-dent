@@ -12,32 +12,33 @@ export async function GET(req: NextRequest) {
   const hasta = req.nextUrl.searchParams.get('hasta')
 
   const fechaDesde = desde ? new Date(desde) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  const fechaHasta = hasta ? new Date(hasta)  : new Date()
+  const fechaHasta = hasta ? new Date(hasta) : new Date()
 
   try {
     if (tipo === 'resumen') {
-      const [totalCitas, totalExpedientes, totalPagos, pagosPorMetodo, citasPorEstado] = await prisma.$transaction([
-        prisma.cita.count({ where: { fecha: { gte: fechaDesde, lte: fechaHasta } } }),
-        prisma.expediente.count({ where: { createdAt: { gte: fechaDesde, lte: fechaHasta } } }),
-        prisma.pago.aggregate({
-          where: { estado: 'activo', createdAt: { gte: fechaDesde, lte: fechaHasta } },
-          _sum: { monto: true },
-          _count: true,
-        }),
-        prisma.pago.groupBy({
-          by: ['metodoPago'],
-          where: { estado: 'activo', createdAt: { gte: fechaDesde, lte: fechaHasta } },
-          _sum: { monto: true },
-          _count: true,
-          orderBy: { _sum: { monto: 'desc' } },
-        }),
-        prisma.cita.groupBy({
-          by: ['estado'],
-          where: { fecha: { gte: fechaDesde, lte: fechaHasta } },
-          _count: true,
-          orderBy: { _count: { estado: 'desc' } },
-        }),
-      ])
+      const [totalCitas, totalExpedientes, totalPagos, pagosPorMetodo, citasPorEstado] =
+        await prisma.$transaction([
+          prisma.cita.count({ where: { fecha: { gte: fechaDesde, lte: fechaHasta } } }),
+          prisma.expediente.count({ where: { createdAt: { gte: fechaDesde, lte: fechaHasta } } }),
+          prisma.pago.aggregate({
+            where: { estado: 'activo', createdAt: { gte: fechaDesde, lte: fechaHasta } },
+            _sum: { monto: true },
+            _count: true,
+          }),
+          prisma.pago.groupBy({
+            by: ['metodoPago'],
+            where: { estado: 'activo', createdAt: { gte: fechaDesde, lte: fechaHasta } },
+            _sum: { monto: true },
+            _count: true,
+            orderBy: { _sum: { monto: 'desc' } },
+          }),
+          prisma.cita.groupBy({
+            by: ['estado'],
+            where: { fecha: { gte: fechaDesde, lte: fechaHasta } },
+            _count: true,
+            orderBy: { _count: { estado: 'desc' } },
+          }),
+        ])
 
       return ok({
         periodo: { desde: fechaDesde, hasta: fechaHasta },
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
       return ok(data.filter(a => Number(a.stockActual) < Number(a.stockMinimo)))
     }
 
-    return badRequest(`Tipo de reporte no reconocido: ${tipo}. Usa: resumen, pagos-doctora, inventario-alertas`)
+    return badRequest(`Tipo no reconocido: ${tipo}`)
   } catch (e) {
     return serverError(e)
   }
