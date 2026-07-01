@@ -24,14 +24,14 @@ export async function GET(req: NextRequest) {
           _sum: { monto: true },
           _count: true,
         }),
-        prisma.pago.groupBy({
+        prisma.pago.orderBy({
           by: ['metodoPago'],
           where: { estado: 'activo', createdAt: { gte: fechaDesde, lte: fechaHasta } },
           _sum: { monto: true },
           _count: true,
           orderBy: { _sum: { monto: 'desc' } },
         }),
-        prisma.cita.groupBy({
+        prisma.cita.orderBy({
           by: ['estado'],
           where: { fecha: { gte: fechaDesde, lte: fechaHasta } },
           _count: true,
