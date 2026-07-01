@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import prisma from './prisma'
 
 interface LogParams {
@@ -18,8 +19,8 @@ export async function logAccion(params: LogParams): Promise<void> {
         accion: params.accion,
         tablaAfectada: params.tablaAfectada,
         registroId: params.registroId ?? null,
-        valorAnterior: params.valorAnterior ?? null,
-        valorNuevo: params.valorNuevo ?? null,
+        valorAnterior: params.valorAnterior ?? Prisma.JsonNull,
+        valorNuevo: params.valorNuevo ?? Prisma.JsonNull,
         ipAddress: params.ipAddress ?? null,
       },
     })
