@@ -1,4 +1,3 @@
-// app/api/reportes/route.ts
 import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth, ok, badRequest, serverError } from '@/lib/api'
@@ -17,7 +16,7 @@ export async function GET(req: NextRequest) {
   try {
     if (tipo === 'resumen') {
       const [totalCitas, totalExpedientes, totalPagos, pagosPorMetodo, citasPorEstado] =
-        await prisma.$transaction([
+        await Promise.all([
           prisma.cita.count({ where: { fecha: { gte: fechaDesde, lte: fechaHasta } } }),
           prisma.expediente.count({ where: { createdAt: { gte: fechaDesde, lte: fechaHasta } } }),
           prisma.pago.aggregate({
@@ -58,8 +57,7 @@ export async function GET(req: NextRequest) {
 
     if (tipo === 'pagos-doctora') {
       const data = await prisma.$queryRaw`
-        SELECT
-          u.id,
+        SELECT u.id,
           u.nombre || ' ' || u.apellido AS doctora,
           COUNT(p.id)::int AS total_transacciones,
           COALESCE(SUM(p.monto), 0)::float AS total_monto
