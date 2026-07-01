@@ -1,4 +1,3 @@
-// lib/bitacora.ts — helper para registrar acciones en la bitácora
 import prisma from './prisma'
 
 interface LogParams {
@@ -19,13 +18,12 @@ export async function logAccion(params: LogParams): Promise<void> {
         accion: params.accion,
         tablaAfectada: params.tablaAfectada,
         registroId: params.registroId ?? null,
-        valorAnterior: params.valorAnterior ?? undefined,
-        valorNuevo: params.valorNuevo ?? undefined,
+        valorAnterior: params.valorAnterior ?? null,
+        valorNuevo: params.valorNuevo ?? null,
         ipAddress: params.ipAddress ?? null,
       },
     })
   } catch (e) {
-    // No interrumpir el flujo principal si falla el log
     console.error('[Bitácora] Error al registrar:', e)
   }
 }
