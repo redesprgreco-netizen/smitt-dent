@@ -19,8 +19,8 @@ export async function logAccion(params: LogParams): Promise<void> {
         accion: params.accion,
         tablaAfectada: params.tablaAfectada,
         registroId: params.registroId ?? null,
-        valorAnterior: params.valorAnterior ?? Prisma.JsonNull,
-        valorNuevo: params.valorNuevo ?? Prisma.JsonNull,
+valorAnterior: (params.valorAnterior as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
+valorNuevo: (params.valorNuevo as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
         ipAddress: params.ipAddress ?? null,
       },
     })
