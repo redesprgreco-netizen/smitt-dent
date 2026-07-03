@@ -76,20 +76,21 @@ enum Sexo {
   otro
 }
 
-model Usuario {
-  id           Int           @id @default(autoincrement())
-  nombre       String        @db.VarChar(80)
-  apellido     String        @db.VarChar(80)
-  correo       String        @unique @db.VarChar(120)
-  passwordHash String        @map("password_hash") @db.VarChar(255)
-  rol          Rol
-  colorAgenda  String?       @map("color_agenda") @db.VarChar(7)
-  estado       EstadoUsuario @default(pendiente)
-  aprobadoPor  Int?          @map("aprobado_por")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+// ==================== MODELOS ====================
 
-  // Relaciones
+model Usuario {
+  id           Int      @id @default(autoincrement())
+  nombre       String   @db.VarChar(80)
+  apellido     String   @db.VarChar(80)
+  correo       String   @unique @db.VarChar(120)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  rol          Rol
+  colorAgenda  String?  @map("color_agenda") @db.VarChar(7)
+  estado       EstadoUsuario @default(pendiente)
+  aprobadoPor  Int?     @map("aprobado_por")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
   aprobador            Usuario?             @relation("AprobacionUsuario", fields: [aprobadoPor], references: [id])
   aprobados            Usuario[]            @relation("AprobacionUsuario")
   citasAsignadas       Cita[]               @relation("CitaDoctora")
@@ -105,7 +106,7 @@ model Usuario {
   inventarioMovimientos InventarioMovimiento[] @relation("MovimientoCreador")
   bitacora             Bitacora[]           @relation("BitacoraUsuario")
   antecedentesActualizados AntecedentesPatologicos[] @relation("AntecedentesUpdater")
-  consentimientosCreados   ConsentimientoInformado[] @relation("ConsentimientoCreador")
+  consentimientosCreados ConsentimientoInformado[] @relation("ConsentimientoCreador")
 
   @@map("usuarios")
 }
@@ -148,17 +149,22 @@ model Expediente {
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
-  // ── I. Ficha de identificación (campos adicionales) ──
-  sexo                       Sexo?
-  ocupacion                  String? @db.VarChar(120)
-  domicilio                  String? @db.VarChar(200)
-  ciudad                     String? @db.VarChar(80)
-  codigoPostal               String? @map("codigo_postal") @db.VarChar(10)
-  contactoEmergenciaNombre   String? @map("contacto_emergencia_nombre") @db.VarChar(120)
+  // Campos adicionales de ficha
+  sexo Sexo?
+  ocupacion String? @db.VarChar(120)
+  domicilio String? @db.VarChar(200)
+  ciudad String? @db.VarChar(80)
+  codigoPostal String? @map("codigo_postal") @db.VarChar(10)
+  contactoEmergenciaNombre String? @map("contacto_emergencia_nombre") @db.VarChar(120)
   contactoEmergenciaTelefono String? @map("contacto_emergencia_telefono") @db.VarChar(20)
-  llenadoPorNombre           String? @map("llenado_por_nombre") @db.VarChar(120)
-  llenadoPorParentesco       String? @map("llenado_por_parentesco") @db.VarChar(60)
+  llenadoPorNombre String? @map("llenado_por_nombre") @db.VarChar(120)
+  llenadoPorParentesco String? @map("llenado_por_parentesco") @db.VarChar(60)
 
+  // === CAMPOS NUEVOS PARA PLAN DE PAGOS ===
+  montoTotalManual Decimal?  @map("monto_total_manual") @db.Decimal(10, 2)
+  numeroPagosPlan   Int?      @map("numero_pagos_plan")
+
+  // Relaciones
   doctora         Usuario              @relation("ExpedienteDoctora", fields: [doctoraId], references: [id])
   creador         Usuario              @relation("ExpedienteCreador", fields: [createdBy], references: [id])
   citas           Cita[]
@@ -173,102 +179,71 @@ model Expediente {
   @@map("expedientes")
 }
 
-// ============================================================
-// II. Antecedentes Patológicos Personales (cuestionario)
-// ============================================================
 model AntecedentesPatologicos {
-  id           Int                 @id @default(autoincrement())
-  expedienteId Int                 @unique @map("expediente_id")
-
-  // 1. Estado de salud general
-  estadoSalud  EstadoSaludGeneral? @map("estado_salud")
-
-  // 2. Enfermedades personales (Sí/No)
-  feReumatica        Boolean @default(false) @map("fe_reumatica")
-  enfCardiovascular  Boolean @default(false) @map("enf_cardiovascular")
-  mareosDesmayos     Boolean @default(false) @map("mareos_desmayos")
-  diabetesPersonal   Boolean @default(false) @map("diabetes_personal")
-  hepatitis          Boolean @default(false)
-  vihSida            Boolean @default(false) @map("vih_sida")
+  id Int @id @default(autoincrement())
+  expedienteId Int @unique @map("expediente_id")
+  estadoSalud EstadoSaludGeneral? @map("estado_salud")
+  feReumatica Boolean @default(false) @map("fe_reumatica")
+  enfCardiovascular Boolean @default(false) @map("enf_cardiovascular")
+  mareosDesmayos Boolean @default(false) @map("mareos_desmayos")
+  diabetesPersonal Boolean @default(false) @map("diabetes_personal")
+  hepatitis Boolean @default(false)
+  vihSida Boolean @default(false) @map("vih_sida")
   artritisReumatismo Boolean @default(false) @map("artritis_reumatismo")
-  gastritisUlceras   Boolean @default(false) @map("gastritis_ulceras")
-  problemasRenales   Boolean @default(false) @map("problemas_renales")
-  anemia             Boolean @default(false)
-  presionArterial    Boolean @default(false) @map("presion_arterial")
-  sangradoAnormal    Boolean @default(false) @map("sangrado_anormal")
-  moretonesFacil     Boolean @default(false) @map("moretones_facil")
-  transfusiones      Boolean @default(false)
-  asma               Boolean @default(false)
-
-  // 3. Antecedentes familiares (Sí/No)
-  diabetesFamiliar     Boolean @default(false) @map("diabetes_familiar")
-  enfCorazonFamiliar   Boolean @default(false) @map("enf_corazon_familiar")
+  gastritisUlceras Boolean @default(false) @map("gastritis_ulceras")
+  problemasRenales Boolean @default(false) @map("problemas_renales")
+  anemia Boolean @default(false)
+  presionArterial Boolean @default(false) @map("presion_arterial")
+  sangradoAnormal Boolean @default(false) @map("sangrado_anormal")
+  moretonesFacil Boolean @default(false) @map("moretones_facil")
+  transfusiones Boolean @default(false)
+  asma Boolean @default(false)
+  diabetesFamiliar Boolean @default(false) @map("diabetes_familiar")
+  enfCorazonFamiliar Boolean @default(false) @map("enf_corazon_familiar")
   hipertensionFamiliar Boolean @default(false) @map("hipertension_familiar")
-  cancerFamiliar       Boolean @default(false) @map("cancer_familiar")
-
-  // 4. Tratamiento médico actual
-  tratamientoActual        Boolean @default(false) @map("tratamiento_actual")
+  cancerFamiliar Boolean @default(false) @map("cancer_familiar")
+  tratamientoActual Boolean @default(false) @map("tratamiento_actual")
   tratamientoActualDetalle String? @map("tratamiento_actual_detalle") @db.Text
-
-  // 5. Alergia a anestésicos / medicamentos / látex
   alergicoAnestesico Boolean @default(false) @map("alergico_anestesico")
-  alergicoDetalle    String? @map("alergico_detalle") @db.Text
-
-  // 6-8. Otras preguntas de salud
-  faltaAire      Boolean @default(false) @map("falta_aire")
-  bocaSeca       Boolean @default(false) @map("boca_seca")
-  embarazada     Boolean @default(false)
-  mesesGestacion Int?    @map("meses_gestacion")
-
-  // 9. Tabaquismo
-  tabaquismo      Boolean @default(false)
-  cigarrosDia     Int?    @map("cigarros_dia")
-  tabaquismoAnios Int?    @map("tabaquismo_anios")
-
-  // 10. Drogas
-  drogas       Boolean @default(false)
+  alergicoDetalle String? @map("alergico_detalle") @db.Text
+  faltaAire Boolean @default(false) @map("falta_aire")
+  bocaSeca Boolean @default(false) @map("boca_seca")
+  embarazada Boolean @default(false)
+  mesesGestacion Int? @map("meses_gestacion")
+  tabaquismo Boolean @default(false)
+  cigarrosDia Int? @map("cigarros_dia")
+  tabaquismoAnios Int? @map("tabaquismo_anios")
+  drogas Boolean @default(false)
   drogasCuales String? @map("drogas_cuales") @db.VarChar(200)
-  drogasAnios  Int?    @map("drogas_anios")
-
-  // 11. Alergias generales
+  drogasAnios Int? @map("drogas_anios")
   alergiasGenerales Boolean @default(false) @map("alergias_generales")
-  alergiasCuales    String? @map("alergias_cuales") @db.VarChar(200)
-  alergiasAnios     Int?    @map("alergias_anios")
-
-  // 12. Alcoholismo
-  alcoholismo       Boolean @default(false)
+  alergiasCuales String? @map("alergias_cuales") @db.VarChar(200)
+  alergiasAnios Int? @map("alergias_anios")
+  alcoholismo Boolean @default(false)
   alcoholCantSemana String? @map("alcohol_cant_semana") @db.VarChar(60)
-  alcoholAnios      Int?    @map("alcohol_anios")
-
-  updatedBy Int      @map("updated_by")
+  alcoholAnios Int? @map("alcohol_anios")
+  updatedBy Int @map("updated_by")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  expediente     Expediente @relation(fields: [expedienteId], references: [id])
-  actualizadoPor Usuario    @relation("AntecedentesUpdater", fields: [updatedBy], references: [id])
-
+  expediente Expediente @relation(fields: [expedienteId], references: [id])
+  actualizadoPor Usuario @relation("AntecedentesUpdater", fields: [updatedBy], references: [id])
   @@map("antecedentes_patologicos")
 }
 
-// ============================================================
-// Consentimiento Informado
-// ============================================================
 model ConsentimientoInformado {
-  id                       Int       @id @default(autoincrement())
-  expedienteId             Int       @unique @map("expediente_id")
-  nombreDentista           String?   @map("nombre_dentista") @db.VarChar(150)
-  nombreRepresentanteLegal String?   @map("nombre_representante_legal") @db.VarChar(150)
-  parentesco               String?   @db.VarChar(60)
-  aceptado                 Boolean   @default(false)
-  firmaNombre              String?   @map("firma_nombre") @db.VarChar(150)
-  fechaFirma               DateTime? @map("fecha_firma") @db.Date
-  createdBy                Int       @map("created_by")
-  createdAt                DateTime  @default(now()) @map("created_at")
-  updatedAt                DateTime  @updatedAt @map("updated_at")
-
+  id Int @id @default(autoincrement())
+  expedienteId Int @unique @map("expediente_id")
+  nombreDentista String? @map("nombre_dentista") @db.VarChar(150)
+  nombreRepresentanteLegal String? @map("nombre_representante_legal") @db.VarChar(150)
+  parentesco String? @db.VarChar(60)
+  aceptado Boolean @default(false)
+  firmaNombre String? @map("firma_nombre") @db.VarChar(150)
+  fechaFirma DateTime? @map("fecha_firma") @db.Date
+  createdBy Int @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
   expediente Expediente @relation(fields: [expedienteId], references: [id])
-  creador    Usuario    @relation("ConsentimientoCreador", fields: [createdBy], references: [id])
-
+  creador Usuario @relation("ConsentimientoCreador", fields: [createdBy], references: [id])
   @@map("consentimiento_informado")
 }
 
@@ -281,12 +256,10 @@ model HistorialClinico {
   notaOriginalId Int?     @map("nota_original_id")
   createdBy      Int      @map("created_by")
   createdAt      DateTime @default(now()) @map("created_at")
-
   expediente   Expediente        @relation(fields: [expedienteId], references: [id])
   creador      Usuario           @relation("HistorialCreador", fields: [createdBy], references: [id])
   notaOriginal HistorialClinico? @relation("CorreccionNota", fields: [notaOriginalId], references: [id])
   correcciones HistorialClinico[] @relation("CorreccionNota")
-
   @@map("historial_clinico")
 }
 
@@ -298,10 +271,8 @@ model OdontogramaPieza {
   notas        String?     @db.Text
   updatedBy    Int         @map("updated_by")
   updatedAt    DateTime    @updatedAt @map("updated_at")
-
   expediente Expediente @relation(fields: [expedienteId], references: [id])
   updater    Usuario    @relation("OdontogramaUpdater", fields: [updatedBy], references: [id])
-
   @@unique([expedienteId, numeroPieza])
   @@map("odontograma_piezas")
 }
@@ -314,10 +285,8 @@ model OdontogramaHistorial {
   estadoNuevo    EstadoPieza @map("estado_nuevo")
   changedBy      Int         @map("changed_by")
   changedAt      DateTime    @default(now()) @map("changed_at")
-
   expediente Expediente @relation(fields: [expedienteId], references: [id])
   changer    Usuario    @relation("OdontogramaChanger", fields: [changedBy], references: [id])
-
   @@map("odontograma_historial")
 }
 
@@ -334,10 +303,8 @@ model PlanTratamiento {
   createdBy    Int               @map("created_by")
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
-
   expediente Expediente @relation(fields: [expedienteId], references: [id])
   creador    Usuario    @relation("PlanCreador", fields: [createdBy], references: [id])
-
   @@map("plan_tratamiento")
 }
 
@@ -354,11 +321,9 @@ model Pago {
   anuladoAt      DateTime?  @map("anulado_at")
   createdBy      Int        @map("created_by")
   createdAt      DateTime   @default(now()) @map("created_at")
-
   expediente Expediente @relation(fields: [expedienteId], references: [id])
   creador    Usuario    @relation("PagoCreador", fields: [createdBy], references: [id])
   anulador   Usuario?   @relation("PagoAnulador", fields: [anuladoPor], references: [id])
-
   @@map("pagos")
 }
 
@@ -372,9 +337,7 @@ model InventarioArticulo {
   activo       Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-
   movimientos InventarioMovimiento[]
-
   @@map("inventario_articulos")
 }
 
@@ -386,10 +349,8 @@ model InventarioMovimiento {
   notas      String?        @db.Text
   createdBy  Int            @map("created_by")
   createdAt  DateTime       @default(now()) @map("created_at")
-
   articulo InventarioArticulo @relation(fields: [articuloId], references: [id])
   creador  Usuario            @relation("MovimientoCreador", fields: [createdBy], references: [id])
-
   @@map("inventario_movimientos")
 }
 
@@ -403,16 +364,6 @@ model Bitacora {
   valorNuevo     Json?    @map("valor_nuevo")
   ipAddress      String?  @map("ip_address") @db.VarChar(45)
   createdAt      DateTime @default(now()) @map("created_at")
-
   usuario Usuario? @relation("BitacoraUsuario", fields: [usuarioId], references: [id])
-
   @@map("bitacora")
-}
-model Expediente {
-  ...
-  // Campos nuevos para plan de pagos
-  montoTotalManual Decimal?  @map("monto_total_manual") @db.Decimal(10, 2)
-  numeroPagosPlan   Int?      @map("numero_pagos_plan")
-
-  ...
 }
