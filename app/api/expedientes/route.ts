@@ -1,13 +1,9 @@
 // app/api/expedientes/route.ts
 import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
-<<<<<<< HEAD
 import { requireAuth, ok, created, badRequest, serverError, paginatedOk, parsePagination } from '@/lib/api'
-=======
-import { requireAuth, created, badRequest, serverError, paginatedOk, parsePagination } from '@/lib/api'
 
 export const dynamic = 'force-dynamic'
->>>>>>> d899dbe1cfeeb64a584d716b1d7de36a1cc5672c
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth()
@@ -91,8 +87,4 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return serverError(e)
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> d899dbe1cfeeb64a584d716b1d7de36a1cc5672c
