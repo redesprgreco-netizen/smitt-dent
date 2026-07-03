@@ -1,42 +1,100 @@
-$ cd /c/dev/smitt-dent
-git show HEAD:"app/api/expedientes/[id]/route.ts"
-// app/api/expedientes/route.ts
+// app/api/expedientes/[id]/route.ts
 import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
-import { requireAuth, ok, created, badRequest, serverError, paginatedOk, parsePagination } from '@/lib/api'
+import { requireAuth, ok, badRequest, forbidden, notFound, serverError } from '@/lib/api'
 
-export async function GET(req: NextRequest) {
+type Params = { params: { id: string } }
+
+export async function GET(_req: NextRequest, { params }: Params) {
   const auth = await requireAuth()
   if ('status' in auth) return auth
   const { session } = auth
 
-  try {
-    const sp = req.nextUrl.searchParams
-    const { page, pageSize, skip } = parsePagination(sp)
-    const q = sp.get('q')?.trim()
-
-    const where: Record<string, unknown> = {}
-
-    // Doctoras solo ven sus pacientes
-    if (session.rol !== 'admin') {
-      where.doctoraId = session.sub
-    }
-
-    if (q) {
-      where.OR = [
-        { nombre:   { contains: q, mode: 'insensitive' } },
-        { apellido: { contains: q, mode: 'insensitive' } },
-        { folio:    { contains: q, mode: 'insensitive' } },
-        { telefono: { contains: q, mode: 'insensitive' } },
-      ]
-    }
-
-    const [data, total] = await prisma.$transaction([
-      prisma.expediente.findMany({
-        where,
-        include: {
-          doctora: { select: { id: true, nombre: true, apellido: true } },
-        },
+  const id = parseInt(params.id)
+  const exp = await prisma.expediente.findUnique({
+    where: { id },
+    include: {
+      doctora:  { select: { id: true, nombre: true, apellido: true } },
+      historial: {
         orderBy: { createdAt: 'desc' },
-        skip,
-:
+        include: { creador: { select: { id: true, nombre: true, apellido: true, rol: true } } },
+      },
+      odontograma: { orderBy: { numeroPieza: 'asc' } },
+      planTratamiento: { orderBy: { createdAt: 'asc' } },
+      pagos: {
+        orderBy: { createdAt: 'desc' },
+        include: { creador: { select: { id: true, nombre: true, apellido: true } } },
+      },
+      antecedentes: true,
+      consentimiento: true,
+    },
+  })
+  if (!exp) return notFound('Expediente no encontrado')
+
+  // Doctoras solo ven sus pacientes
+  if (session.rol !== 'admin' && exp.doctoraId !== session.sub)
+    return forbidden('No tienes acceso a este expediente')
+
+  // Calcular saldo
+  const totalPresupuesto = exp.planTratamiento.reduce(
+    (acc, pt) => acc + Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100), 0
+  )
+  const totalPagado = exp.pagos
+    .filter(p => p.estado === 'activo')
+    .reduce((acc, p) => acc + Number(p.monto), 0)
+
+  return ok({ ...exp, totalPresupuesto, totalPagado, saldoPendiente: totalPresupuesto - totalPagado })
+}
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const auth = await requireAuth()
+  if ('status' in auth) return auth
+  const { session } = auth
+
+  const id = parseInt(params.id)
+  const exp = await prisma.expediente.findUnique({ where: { id } })
+  if (!exp) return notFound('Expediente no encontrado')
+
+  if (session.rol !== 'admin' && exp.doctoraId !== session.sub)
+    return forbidden('No tienes acceso a este expediente')
+
+  try {
+    const body = await req.json()
+    const {
+      nombre, apellido, fechaNacimiento, telefono, correo, alergias, motivoInicial, estado,
+      sexo, ocupacion, domicilio, ciudad, codigoPostal,
+      contactoEmergenciaNombre, contactoEmergenciaTelefono,
+      llenadoPorNombre, llenadoPorParentesco,
+    } = body
+
+    // Solo admin puede cambiar estado
+    if (estado !== undefined && session.rol !== 'admin')
+      return forbidden('Solo la administradora puede cambiar el estado del expediente')
+
+    const updated = await prisma.expediente.update({
+      where: { id },
+      data: {
+        ...(nombre           && { nombre: nombre.trim() }),
+        ...(apellido         && { apellido: apellido.trim() }),
+        ...(fechaNacimiento !== undefined && { fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null }),
+        ...(telefono  !== undefined && { telefono: telefono?.trim() || null }),
+        ...(correo    !== undefined && { correo: correo?.toLowerCase().trim() || null }),
+        ...(alergias  !== undefined && { alergias: alergias?.trim() || null }),
+        ...(motivoInicial !== undefined && { motivoInicial: motivoInicial?.trim() || null }),
+        ...(estado    !== undefined && { estado }),
+        ...(sexo !== undefined && { sexo: sexo || null }),
+        ...(ocupacion !== undefined && { ocupacion: ocupacion?.trim() || null }),
+        ...(domicilio !== undefined && { domicilio: domicilio?.trim() || null }),
+        ...(ciudad !== undefined && { ciudad: ciudad?.trim() || null }),
+        ...(codigoPostal !== undefined && { codigoPostal: codigoPostal?.trim() || null }),
+        ...(contactoEmergenciaNombre !== undefined && { contactoEmergenciaNombre: contactoEmergenciaNombre?.trim() || null }),
+        ...(contactoEmergenciaTelefono !== undefined && { contactoEmergenciaTelefono: contactoEmergenciaTelefono?.trim() || null }),
+        ...(llenadoPorNombre !== undefined && { llenadoPorNombre: llenadoPorNombre?.trim() || null }),
+        ...(llenadoPorParentesco !== undefined && { llenadoPorParentesco: llenadoPorParentesco?.trim() || null }),
+      },
+    })
+    return ok(updated)
+  } catch (e) {
+    return serverError(e)
+  }
+}
