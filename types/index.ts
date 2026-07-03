@@ -32,8 +32,8 @@ export interface Cita {
   nombrePaciente: string
   apellidoPaciente: string
   asunto: string
-  fecha: string          // ISO date YYYY-MM-DD
-  hora: string           // HH:mm (normalizado por la API)
+  fecha: string
+  hora: string
   notas: string | null
   doctoraId: number
   expedienteId: number | null
@@ -41,7 +41,6 @@ export interface Cita {
   createdBy: number
   createdAt: string
   updatedAt: string
-  // Joined
   doctora?: Pick<Usuario, 'id' | 'nombre' | 'apellido' | 'colorAgenda'>
 }
 
@@ -60,7 +59,8 @@ export interface Expediente {
   createdBy: number
   createdAt: string
   updatedAt: string
-  // I. Ficha de identificación (campos adicionales)
+
+  // Campos adicionales de ficha
   sexo: Sexo | null
   ocupacion: string | null
   domicilio: string | null
@@ -70,18 +70,21 @@ export interface Expediente {
   contactoEmergenciaTelefono: string | null
   llenadoPorNombre: string | null
   llenadoPorParentesco: string | null
+
+  // Campos nuevos para plan de pagos
+  montoTotalManual?: number | null
+  numeroPagosPlan?: number | null
+
   // Joined
   doctora?: Pick<Usuario, 'id' | 'nombre' | 'apellido'>
   antecedentes?: AntecedentesPatologicos | null
   consentimiento?: ConsentimientoInformado | null
 }
 
-// II. Antecedentes Patológicos Personales (cuestionario)
 export interface AntecedentesPatologicos {
   id: number
   expedienteId: number
   estadoSalud: EstadoSaludGeneral | null
-
   feReumatica: boolean
   enfCardiovascular: boolean
   mareosDesmayos: boolean
@@ -97,45 +100,35 @@ export interface AntecedentesPatologicos {
   moretonesFacil: boolean
   transfusiones: boolean
   asma: boolean
-
   diabetesFamiliar: boolean
   enfCorazonFamiliar: boolean
   hipertensionFamiliar: boolean
   cancerFamiliar: boolean
-
   tratamientoActual: boolean
   tratamientoActualDetalle: string | null
-
   alergicoAnestesico: boolean
   alergicoDetalle: string | null
-
   faltaAire: boolean
   bocaSeca: boolean
   embarazada: boolean
   mesesGestacion: number | null
-
   tabaquismo: boolean
   cigarrosDia: number | null
   tabaquismoAnios: number | null
-
   drogas: boolean
   drogasCuales: string | null
   drogasAnios: number | null
-
   alergiasGenerales: boolean
   alergiasCuales: string | null
   alergiasAnios: number | null
-
   alcoholismo: boolean
   alcoholCantSemana: string | null
   alcoholAnios: number | null
-
   updatedBy: number
   createdAt: string
   updatedAt: string
 }
 
-// Consentimiento Informado
 export interface ConsentimientoInformado {
   id: number
   expedienteId: number
@@ -159,7 +152,6 @@ export interface HistorialClinico {
   notaOriginalId: number | null
   createdBy: number
   createdAt: string
-  // Joined
   autor?: Pick<Usuario, 'id' | 'nombre' | 'apellido' | 'rol'>
   correcciones?: HistorialClinico[]
 }
@@ -213,7 +205,6 @@ export interface Pago {
   anuladoAt: string | null
   createdBy: number
   createdAt: string
-  // Joined
   expediente?: Pick<Expediente, 'id' | 'folio' | 'nombre' | 'apellido'>
   creador?: Pick<Usuario, 'id' | 'nombre' | 'apellido'>
 }
@@ -256,7 +247,7 @@ export interface BitacoraEntry {
 
 // ─── JWT Payload ──────────────────────────────────────────
 export interface JWTPayload {
-  sub: number          // usuario.id
+  sub: number
   correo: string
   rol: Rol
   nombre: string
@@ -283,7 +274,6 @@ export interface PaginatedResponse<T> {
   totalPages: number
 }
 
-// ─── Vista: saldo expediente ──────────────────────────────
 export interface SaldoExpediente {
   expedienteId: number
   folio: string
@@ -291,10 +281,4 @@ export interface SaldoExpediente {
   totalPresupuesto: number
   totalPagado: number
   saldoPendiente: number
-}
-export interface Expediente {
-  ...
-  montoTotalManual?: number | null;
-  numeroPagosPlan?: number | null;
-  // ... resto de campos
 }

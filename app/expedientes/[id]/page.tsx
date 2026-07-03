@@ -28,7 +28,6 @@ export default function ExpedienteDetallePage() {
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<{ id: number; rol: string } | null>(null)
 
-  // Form states
   const [nuevaNota, setNuevaNota] = useState({ titulo: '', descripcion: '' })
   const [nuevaPieza, setNuevaPieza] = useState({ concepto: '', piezas: '', cantidad: '1', precioUnitario: '', descuentoPct: '0' })
   const [nuevoPago, setNuevoPago] = useState({ monto: '', metodoPago: 'efectivo' as 'efectivo'|'transferencia'|'tarjeta', concepto: '' })
@@ -37,7 +36,7 @@ export default function ExpedienteDetallePage() {
   const [savingPago, setSavingPago] = useState(false)
   const [anulando, setAnulando] = useState<number | null>(null)
 
-  // Estados para Plan de Pagos
+  // Plan de Pagos
   const [montoTotalManual, setMontoTotalManual] = useState('')
   const [numeroPagosPlan, setNumeroPagosPlan] = useState('')
 
@@ -53,7 +52,6 @@ export default function ExpedienteDetallePage() {
       if (!res.ok) { router.push('/expedientes'); return }
       if (data.ok) {
         setExp(data.data)
-        // Inicializar valores del plan de pagos
         setMontoTotalManual(data.data.montoTotalManual?.toString() || '')
         setNumeroPagosPlan(data.data.numeroPagosPlan?.toString() || '')
       }
@@ -76,7 +74,6 @@ export default function ExpedienteDetallePage() {
     return y
   }
 
-  // Guardar Plan de Pagos
   async function guardarPlanPagos() {
     const res = await fetch(`/api/expedientes/${id}`, {
       method: 'PATCH',
@@ -172,58 +169,248 @@ export default function ExpedienteDetallePage() {
   if (loading) return <p style={{ padding: 32, fontSize: 13, color: 'var(--text-muted)' }}>Cargando expediente...</p>
   if (!exp) return null
 
-  const estadoPlanColor: Record<string, string> = { pendiente: 'pill-amber', en_curso: 'pill-blue', realizado: 'pill-green' }
-  const metodoIcon: Record<string, string> = { efectivo: 'ti-cash', transferencia: 'ti-building-bank', tarjeta: 'ti-credit-card' }
+  const metodoIcon: Record<string, string> = { 
+    efectivo: 'ti-cash', 
+    transferencia: 'ti-building-bank', 
+    tarjeta: 'ti-credit-card' 
+  }
 
   return (
     <div>
-      {/* ... (Breadcrumb y Header del paciente se mantienen igual) ... */}
+      {/* Breadcrumb */}
+      <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Link href="/expedientes" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Expedientes</Link>
+        <i className="ti ti-chevron-right" style={{ fontSize: 12 }} />
+        <span style={{ color: 'var(--text-main)' }}>{exp.folio}</span>
+      </div>
 
-      {/* Tabs - igual */}
+      {/* Header del paciente */}
+      <div className="card" style={{ padding: '20px 24px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontFamily: 'Sora', fontSize: 20, fontWeight: 700, color: 'var(--blue-accent)' }}>
+              {exp.nombre[0]}{exp.apellido[0]}
+            </span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <h1 style={{ fontFamily: 'Sora', fontSize: 20, fontWeight: 700 }}>
+                {exp.nombre} {exp.apellido}
+              </h1>
+              <span className="pill pill-gray">{exp.folio}</span>
+              <span className={`pill ${exp.estado === 'activo' ? 'pill-green' : 'pill-gray'}`}>{exp.estado}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 20, marginTop: 8, flexWrap: 'wrap' }}>
+              {exp.fechaNacimiento && (
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  <i className="ti ti-cake" style={{ marginRight: 4 }} />
+                  {fmtFecha(exp.fechaNacimiento)} ({edad(exp.fechaNacimiento)} años)
+                </span>
+              )}
+              {exp.telefono && (
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  <i className="ti ti-phone" style={{ marginRight: 4 }} />
+                  {exp.telefono}
+                </span>
+              )}
+              {exp.correo && (
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  <i className="ti ti-mail" style={{ marginRight: 4 }} />
+                  {exp.correo}
+                </span>
+              )}
+              {exp.doctora && (
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  <i className="ti ti-stethoscope" style={{ marginRight: 4 }} />
+                  {exp.doctora.nombre} {exp.doctora.apellido}
+                </span>
+              )}
+            </div>
+            {exp.alergias && (
+              <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fdeae8', borderRadius: 8, padding: '4px 10px' }}>
+                <i className="ti ti-alert-triangle" style={{ color: '#c0392b', fontSize: 14 }} />
+                <span style={{ fontSize: 12.5, color: '#c0392b', fontWeight: 500 }}>Alergias: {exp.alergias}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Saldo */}
+          <div style={{ display: 'flex', gap: 14 }}>
+            {[
+              { label: 'Presupuesto', value: fmt(exp.totalPresupuesto), color: 'var(--text-main)' },
+              { label: 'Pagado', value: fmt(exp.totalPagado), color: '#1a9e5c' },
+              { label: 'Saldo', value: fmt(exp.saldoPendiente), color: exp.saldoPendiente > 0 ? '#c0392b' : '#1a9e5c' },
+            ].map(s => (
+              <div key={s.label} style={{ textAlign: 'center', background: 'var(--surface)', borderRadius: 10, padding: '10px 14px', minWidth: 90 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>{s.label}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: s.color }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="tabs-bar">
+        {([
+          { key: 'ficha', label: 'Ficha clínica', icon: 'ti-clipboard-text' },
+          { key: 'historial', label: 'Historial clínico', icon: 'ti-notes' },
+          { key: 'odontograma', label: 'Odontograma', icon: 'ti-tooth' },
+          { key: 'presupuesto', label: 'Plan de tratamiento', icon: 'ti-list-check' },
+          { key: 'pagos', label: 'Pagos', icon: 'ti-cash' },
+        ] as const).map(t => (
+          <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+            <i className={`ti ${t.icon}`} style={{ marginRight: 6 }} />{t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: Ficha clínica */}
+      {tab === 'ficha' && <FichaClinica expediente={exp} onUpdated={load} />}
+
+      {/* Tab: Historial */}
+      {tab === 'historial' && (
+        <div>
+          <div className="card" style={{ padding: 20, marginBottom: 16 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Agregar nota clínica</p>
+            <form onSubmit={agregarNota}>
+              <div style={{ marginBottom: 10 }}>
+                <label className="form-label">Título</label>
+                <input className="form-input" required value={nuevaNota.titulo} onChange={e => setNuevaNota(f => ({ ...f, titulo: e.target.value }))} placeholder="Consulta de revisión..." />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label className="form-label">Descripción</label>
+                <textarea className="form-textarea" required value={nuevaNota.descripcion} onChange={e => setNuevaNota(f => ({ ...f, descripcion: e.target.value }))} placeholder="Descripción detallada..." />
+              </div>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={savingNota}>
+                <i className="ti ti-plus" /> {savingNota ? 'Guardando...' : 'Agregar nota'}
+              </button>
+            </form>
+          </div>
+          {exp.historial.length === 0 ? (
+            <div className="card" style={{ padding: 32, textAlign: 'center' }}>
+              <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>Sin notas clínicas aún</p>
+            </div>
+          ) : exp.historial.map(nota => (
+            <div key={nota.id} className="card" style={{ padding: '16px 20px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                {nota.esCorreccion && <span className="pill pill-amber">Corrección</span>}
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{nota.titulo}</span>
+              </div>
+              <p style={{ fontSize: 13.5, whiteSpace: 'pre-wrap' }}>{nota.descripcion}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tab: Odontograma */}
+      {tab === 'odontograma' && <Odontograma expedienteId={parseInt(id)} />}
 
       {/* Tab: Plan de tratamiento */}
       {tab === 'presupuesto' && (
         <div>
-          {/* === NUEVO: Plan de Pagos === */}
           <div className="card" style={{ padding: 20, marginBottom: 16 }}>
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Plan de Pagos (Total y Cuotas)</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
               <div>
                 <label className="form-label">Total a Cobrar (MXN)</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={montoTotalManual} 
-                  onChange={(e) => setMontoTotalManual(e.target.value)}
-                  placeholder="15000.00" 
-                />
+                <input type="number" className="form-input" value={montoTotalManual} onChange={(e) => setMontoTotalManual(e.target.value)} placeholder="15000.00" />
               </div>
               <div>
                 <label className="form-label">Número de Pagos</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={numeroPagosPlan} 
-                  onChange={(e) => setNumeroPagosPlan(e.target.value)}
-                  placeholder="3" 
-                />
+                <input type="number" className="form-input" value={numeroPagosPlan} onChange={(e) => setNumeroPagosPlan(e.target.value)} placeholder="3" />
               </div>
-              <button className="btn btn-primary btn-sm" onClick={guardarPlanPagos}>
-                Guardar Plan
-              </button>
+              <button className="btn btn-primary btn-sm" onClick={guardarPlanPagos}>Guardar Plan</button>
             </div>
           </div>
 
-          {/* Formulario de agregar ítem (se mantiene igual) */}
           <div className="card" style={{ padding: 20, marginBottom: 16 }}>
-            {/* ... tu formulario de agregarPieza original ... */}
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Agregar ítem al presupuesto</p>
+            <form onSubmit={agregarPieza}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label className="form-label">Concepto</label>
+                  <input className="form-input" required value={nuevaPieza.concepto} onChange={e => setNuevaPieza(f => ({ ...f, concepto: e.target.value }))} placeholder="Limpieza dental..." />
+                </div>
+                <div>
+                  <label className="form-label">Piezas</label>
+                  <input className="form-input" value={nuevaPieza.piezas} onChange={e => setNuevaPieza(f => ({ ...f, piezas: e.target.value }))} placeholder="36, 37" />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div>
+                  <label className="form-label">Cantidad</label>
+                  <input className="form-input" type="number" min="0.1" step="0.1" value={nuevaPieza.cantidad} onChange={e => setNuevaPieza(f => ({ ...f, cantidad: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="form-label">Precio unitario</label>
+                  <input className="form-input" type="number" min="0" step="0.01" required value={nuevaPieza.precioUnitario} onChange={e => setNuevaPieza(f => ({ ...f, precioUnitario: e.target.value }))} placeholder="1500.00" />
+                </div>
+                <div>
+                  <label className="form-label">Descuento %</label>
+                  <input className="form-input" type="number" min="0" max="100" value={nuevaPieza.descuentoPct} onChange={e => setNuevaPieza(f => ({ ...f, descuentoPct: e.target.value }))} />
+                </div>
+              </div>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={savingPieza}>
+                <i className="ti ti-plus" /> {savingPieza ? 'Guardando...' : 'Agregar ítem'}
+              </button>
+            </form>
           </div>
 
-          {/* Tabla de ítems (se mantiene igual) */}
+          {/* Tabla de ítems */}
           {exp.planTratamiento.length === 0 ? (
-            // ... igual
+            <div className="card" style={{ padding: 32, textAlign: 'center' }}>
+              <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>Sin ítems en el plan de tratamiento</p>
+            </div>
           ) : (
-            // ... tabla igual
+            <div className="card" style={{ overflow: 'hidden' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Concepto</th>
+                    <th>Piezas</th>
+                    <th>Cant.</th>
+                    <th>Precio unit.</th>
+                    <th>Desc. %</th>
+                    <th>Subtotal</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {exp.planTratamiento.map(pt => {
+                    const subtotalConDesc = Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100)
+                    return (
+                      <tr key={pt.id}>
+                        <td style={{ fontWeight: 500 }}>{pt.concepto}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{pt.piezas ?? '—'}</td>
+                        <td>{Number(pt.cantidad)}</td>
+                        <td>{fmt(Number(pt.precioUnitario))}</td>
+                        <td>{Number(pt.descuentoPct) > 0 ? `${pt.descuentoPct}%` : '—'}</td>
+                        <td style={{ fontWeight: 600 }}>{fmt(subtotalConDesc)}</td>
+                        <td>
+                          <select className="form-select" style={{ width: 110 }} value={pt.estado} onChange={e => cambiarEstadoPlan(pt.id, e.target.value)}>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="en_curso">En curso</option>
+                            <option value="realizado">Realizado</option>
+                          </select>
+                        </td>
+                        <td>
+                          <button className="btn btn-danger btn-sm" onClick={() => eliminarPlan(pt.id)}>
+                            <i className="ti ti-trash" />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  <tr style={{ background: 'var(--surface)' }}>
+                    <td colSpan={5} style={{ textAlign: 'right', fontWeight: 600 }}>Total:</td>
+                    <td style={{ fontWeight: 700 }}>{fmt(exp.totalPresupuesto)}</td>
+                    <td colSpan={2} />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
@@ -231,9 +418,19 @@ export default function ExpedienteDetallePage() {
       {/* Tab: Pagos */}
       {tab === 'pagos' && (
         <div>
-          {/* Resumen - igual */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 16 }}>
+            {[
+              { label: 'Total presupuesto', value: fmt(exp.totalPresupuesto) },
+              { label: 'Total pagado', value: fmt(exp.totalPagado) },
+              { label: 'Saldo pendiente', value: fmt(exp.saldoPendiente) },
+            ].map(s => (
+              <div key={s.label} className="card" style={{ padding: 16 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{s.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
 
-          {/* Registrar pago - Mejorado */}
           <div className="card" style={{ padding: 20, marginBottom: 16 }}>
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Registrar pago</p>
             <p style={{ fontSize: 13, color: '#1a9e5c', marginBottom: 12 }}>
@@ -243,45 +440,74 @@ export default function ExpedienteDetallePage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 12, marginBottom: 12 }}>
                 <div>
                   <label className="form-label">Monto (MXN)</label>
-                  <input 
-                    className="form-input" 
-                    type="number" 
-                    min="0.01" 
-                    step="0.01" 
-                    max={exp.saldoPendiente}
-                    required 
-                    value={nuevoPago.monto}
-                    onChange={e => setNuevoPago(f => ({ ...f, monto: e.target.value }))} 
-                    placeholder="500.00" 
-                  />
+                  <input className="form-input" type="number" min="0.01" step="0.01" max={exp.saldoPendiente} required value={nuevoPago.monto}
+                    onChange={e => setNuevoPago(f => ({ ...f, monto: e.target.value }))} placeholder="500.00" />
                 </div>
                 <div>
-                  <label className="form-label">Método de pago</label>
-                  <select className="form-select" value={nuevoPago.metodoPago}
-                    onChange={e => setNuevoPago(f => ({ ...f, metodoPago: e.target.value as any }))}>
+                  <label className="form-label">Método</label>
+                  <select className="form-select" value={nuevoPago.metodoPago} onChange={e => setNuevoPago(f => ({ ...f, metodoPago: e.target.value as any }))}>
                     <option value="efectivo">Efectivo</option>
                     <option value="transferencia">Transferencia</option>
                     <option value="tarjeta">Tarjeta</option>
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Concepto (opcional)</label>
-                  <input className="form-input" value={nuevoPago.concepto}
-                    onChange={e => setNuevoPago(f => ({ ...f, concepto: e.target.value }))} placeholder="Abono consulta..." />
+                  <label className="form-label">Concepto</label>
+                  <input className="form-input" value={nuevoPago.concepto} onChange={e => setNuevoPago(f => ({ ...f, concepto: e.target.value }))} placeholder="Abono consulta..." />
                 </div>
               </div>
               <button type="submit" className="btn btn-primary btn-sm" disabled={savingPago || exp.saldoPendiente <= 0}>
                 <i className="ti ti-cash" /> {savingPago ? 'Registrando...' : 'Registrar pago'}
               </button>
-              {exp.saldoPendiente <= 0 && <p style={{color: '#1a9e5c', marginTop: 8}}>✅ Deuda saldada</p>}
             </form>
           </div>
 
-          {/* Lista de pagos - igual */}
           {exp.pagos.length === 0 ? (
-            // ...
+            <div className="card" style={{ padding: 32, textAlign: 'center' }}>
+              <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>Sin pagos registrados</p>
+            </div>
           ) : (
-            // tabla igual
+            <div className="card" style={{ overflow: 'hidden' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Folio</th>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                    <th>Método</th>
+                    <th>Concepto</th>
+                    <th>Estado</th>
+                    {session?.rol === 'admin' && <th></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {exp.pagos.map(pago => (
+                    <tr key={pago.id} style={{ opacity: pago.estado === 'anulado' ? 0.55 : 1 }}>
+                      <td style={{ fontFamily: 'monospace' }}>{pago.folioRecibo}</td>
+                      <td>{fmtFechaHora(pago.createdAt)}</td>
+                      <td style={{ fontWeight: 600 }}>{fmt(Number(pago.monto))}</td>
+                      <td>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <i className={`ti ${metodoIcon[pago.metodoPago]}`} />
+                          {pago.metodoPago}
+                        </span>
+                      </td>
+                      <td>{pago.concepto ?? '—'}</td>
+                      <td>
+                        <span className={`pill ${pago.estado === 'activo' ? 'pill-green' : 'pill-red'}`}>
+                          {pago.estado}
+                        </span>
+                      </td>
+                      {session?.rol === 'admin' && pago.estado === 'activo' && (
+                        <td>
+                          <button className="btn btn-danger btn-sm" onClick={() => anularPago(pago.id)}>Anular</button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
