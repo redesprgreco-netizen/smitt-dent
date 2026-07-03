@@ -6,7 +6,6 @@ import Link from 'next/link'
 export default async function DashboardPage() {
   const session = await getSessionFromCookie()
 
-  // Stats rápidas del día de hoy
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const manana = new Date(hoy)
@@ -41,7 +40,6 @@ export default async function DashboardPage() {
       : Promise.resolve(0),
   ])
 
-  // Próximas citas del día
   const citasProximas = await prisma.cita.findMany({
     where: {
       fecha: { gte: hoy, lt: manana },
@@ -54,13 +52,13 @@ export default async function DashboardPage() {
   })
 
   const modules = [
-    { href: '/agenda',       icon: 'ti-calendar',    label: 'Agenda',        sub: 'Citas del día',     color: 'ic-blue'  },
-    { href: '/expedientes',  icon: 'ti-folder-open', label: 'Expedientes',   sub: 'Fichas clínicas',   color: 'ic-teal'  },
-    { href: '/facturacion',  icon: 'ti-cash',        label: 'Facturación',   sub: 'Cobros y recibos',  color: 'ic-green' },
+    { href: '/agenda',       icon: 'ti-calendar',    label: 'Agenda',        sub: 'Citas del dia',     color: 'ic-blue'  },
+    { href: '/expedientes',  icon: 'ti-folder-open', label: 'Expedientes',   sub: 'Fichas clinicas',   color: 'ic-teal'  },
+    { href: '/facturacion',  icon: 'ti-cash',        label: 'Facturacion',   sub: 'Cobros y recibos',  color: 'ic-green' },
     { href: '/inventario',   icon: 'ti-package',     label: 'Inventario',    sub: 'Stock de insumos',  color: 'ic-amber' },
     ...(session?.rol === 'admin' ? [
-      { href: '/reportes',      icon: 'ti-chart-bar', label: 'Reportes',      sub: 'Estadísticas',   color: 'ic-purple' },
-      { href: '/configuracion', icon: 'ti-settings',  label: 'Configuración', sub: 'Sistema',        color: 'ic-navy'   },
+      { href: '/reportes',      icon: 'ti-chart-bar', label: 'Reportes',      sub: 'Estadisticas',   color: 'ic-purple' },
+      { href: '/configuracion', icon: 'ti-settings',  label: 'Configuracion', sub: 'Sistema',        color: 'ic-navy'   },
     ] : []),
   ]
 
@@ -75,7 +73,6 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ fontFamily: 'Sora', fontSize: 22, fontWeight: 700 }}>Panel Principal</h1>
@@ -98,12 +95,11 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
         {[
           { label: 'Citas hoy',         value: citasHoy,                          icon: 'ti-calendar-event', color: '#2272d4' },
           { label: 'Expedientes activos', value: expedientesActivos,               icon: 'ti-folder-open',    color: '#00918a' },
-          { label: 'Cobrado este mes',   value: formatMonto(Number(pagosMes._sum.monto ?? 0)), icon: 'ti-cash', color: '#1a9e5c', isMonto: true },
+          { label: 'Cobrado este mes',   value: formatMonto(Number(pagosMes._sum.monto ?? 0)), icon: 'ti-cash', color: '#1a9e5c' },
           ...(session?.rol === 'admin' ? [{ label: 'Solicitudes pendientes', value: pendientesAprobacion, icon: 'ti-user-check', color: '#c87d00' }] : [
             { label: 'Citas esta semana', value: citasHoy, icon: 'ti-calendar-week', color: '#6c3fcf' },
           ]),
@@ -118,21 +114,16 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Módulos */}
       <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.9px', marginBottom: 14 }}>
-        Módulos
+        Modulos
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 36 }}>
         {modules.map(m => (
           <Link key={m.href} href={m.href} style={{ textDecoration: 'none' }}>
-            <div className="card" style={{
+            <div className="card dash-card" style={{
               padding: '22px 16px 18px', display: 'flex', flexDirection: 'column',
               alignItems: 'center', gap: 10, cursor: 'pointer',
-              transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
-            }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(13,43,85,0.1)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '' }}
-            >
+            }}>
               <div className={`${m.color}`} style={{ width: 52, height: 52, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <i className={`ti ${m.icon}`} style={{ fontSize: 26 }} />
               </div>
@@ -143,9 +134,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Bottom panels */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        {/* Citas de hoy */}
         <div className="card" style={{ padding: '20px 22px' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <i className="ti ti-calendar-event" style={{ fontSize: 16, color: 'var(--text-muted)' }} />
@@ -168,7 +157,7 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{cita.nombrePaciente} {cita.apellidoPaciente}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatHora(cita.hora)} · {cita.asunto}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatHora(cita.hora)} - {cita.asunto}</div>
               </div>
               <span className={`pill ${cita.estado === 'confirmada' ? 'pill-green' : cita.estado === 'completada' ? 'pill-blue' : 'pill-amber'}`} style={{ marginLeft: 'auto' }}>
                 {cita.estado}
@@ -176,21 +165,20 @@ export default async function DashboardPage() {
             </div>
           ))}
           <Link href="/agenda" style={{ display: 'block', textAlign: 'center', marginTop: 14, fontSize: 13, color: 'var(--blue-accent)', fontWeight: 500 }}>
-            Ver agenda completa →
+            Ver agenda completa
           </Link>
         </div>
 
-        {/* Accesos rápidos */}
         <div className="card" style={{ padding: '20px 22px' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <i className="ti ti-bolt" style={{ fontSize: 16, color: 'var(--text-muted)' }} />
-            Acciones rápidas
+            Acciones rapidas
           </div>
           {[
             { label: 'Nueva cita', sub: 'Agendar paciente', icon: 'ti-calendar-plus', href: '/agenda?nueva=1',      color: '#2272d4', bg: '#e8f1fb' },
             { label: 'Nuevo expediente', sub: 'Registrar paciente', icon: 'ti-folder-plus', href: '/expedientes?nuevo=1', color: '#00918a', bg: '#e0f7f6' },
-            { label: 'Registrar pago', sub: 'Cobro rápido', icon: 'ti-cash', href: '/facturacion?nuevo=1',       color: '#1a9e5c', bg: '#e8f8ee' },
-            ...(session?.rol === 'admin' ? [{ label: 'Ver reportes', sub: 'Estadísticas del mes', icon: 'ti-chart-bar', href: '/reportes', color: '#6c3fcf', bg: '#f0ecff' }] : []),
+            { label: 'Registrar pago', sub: 'Cobro rapido', icon: 'ti-cash', href: '/facturacion?nuevo=1',       color: '#1a9e5c', bg: '#e8f8ee' },
+            ...(session?.rol === 'admin' ? [{ label: 'Ver reportes', sub: 'Estadisticas del mes', icon: 'ti-chart-bar', href: '/reportes', color: '#6c3fcf', bg: '#f0ecff' }] : []),
           ].map((item, i) => (
             <Link key={i} href={item.href} style={{ textDecoration: 'none', display: 'block' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}>

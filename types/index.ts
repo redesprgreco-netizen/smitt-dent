@@ -10,6 +10,8 @@ export type EstadoTratamiento = 'pendiente' | 'en_curso' | 'realizado'
 export type MetodoPago = 'efectivo' | 'transferencia' | 'tarjeta'
 export type EstadoPago = 'activo' | 'anulado'
 export type TipoMovimiento = 'entrada' | 'salida'
+export type Sexo = 'masculino' | 'femenino' | 'otro'
+export type EstadoSaludGeneral = 'bueno' | 'regular' | 'malo'
 
 // ─── Modelos ──────────────────────────────────────────────
 export interface Usuario {
@@ -58,8 +60,94 @@ export interface Expediente {
   createdBy: number
   createdAt: string
   updatedAt: string
+  // I. Ficha de identificación (campos adicionales)
+  sexo: Sexo | null
+  ocupacion: string | null
+  domicilio: string | null
+  ciudad: string | null
+  codigoPostal: string | null
+  contactoEmergenciaNombre: string | null
+  contactoEmergenciaTelefono: string | null
+  llenadoPorNombre: string | null
+  llenadoPorParentesco: string | null
   // Joined
   doctora?: Pick<Usuario, 'id' | 'nombre' | 'apellido'>
+  antecedentes?: AntecedentesPatologicos | null
+  consentimiento?: ConsentimientoInformado | null
+}
+
+// II. Antecedentes Patológicos Personales (cuestionario)
+export interface AntecedentesPatologicos {
+  id: number
+  expedienteId: number
+  estadoSalud: EstadoSaludGeneral | null
+
+  feReumatica: boolean
+  enfCardiovascular: boolean
+  mareosDesmayos: boolean
+  diabetesPersonal: boolean
+  hepatitis: boolean
+  vihSida: boolean
+  artritisReumatismo: boolean
+  gastritisUlceras: boolean
+  problemasRenales: boolean
+  anemia: boolean
+  presionArterial: boolean
+  sangradoAnormal: boolean
+  moretonesFacil: boolean
+  transfusiones: boolean
+  asma: boolean
+
+  diabetesFamiliar: boolean
+  enfCorazonFamiliar: boolean
+  hipertensionFamiliar: boolean
+  cancerFamiliar: boolean
+
+  tratamientoActual: boolean
+  tratamientoActualDetalle: string | null
+
+  alergicoAnestesico: boolean
+  alergicoDetalle: string | null
+
+  faltaAire: boolean
+  bocaSeca: boolean
+  embarazada: boolean
+  mesesGestacion: number | null
+
+  tabaquismo: boolean
+  cigarrosDia: number | null
+  tabaquismoAnios: number | null
+
+  drogas: boolean
+  drogasCuales: string | null
+  drogasAnios: number | null
+
+  alergiasGenerales: boolean
+  alergiasCuales: string | null
+  alergiasAnios: number | null
+
+  alcoholismo: boolean
+  alcoholCantSemana: string | null
+  alcoholAnios: number | null
+
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+// Consentimiento Informado
+export interface ConsentimientoInformado {
+  id: number
+  expedienteId: number
+  nombreDentista: string | null
+  nombreRepresentanteLegal: string | null
+  parentesco: string | null
+  aceptado: boolean
+  firmaNombre: string | null
+  fechaFirma: string | null
+  createdBy: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface HistorialClinico {

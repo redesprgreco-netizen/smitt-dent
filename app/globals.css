@@ -259,3 +259,10 @@ body {
 .ic-purple { background: #f0ecff; } .ic-purple i { color: #6c3fcf; }
 .ic-pink   { background: #fde8f5; } .ic-pink i   { color: #b03aaa; }
 .ic-navy   { background: #e8edf8; } .ic-navy i   { color: #2a4daa; }
+.dash-card {
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.dash-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(13, 43, 85, 0.1);
+}

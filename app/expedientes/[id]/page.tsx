@@ -3,14 +3,17 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Odontograma from '@/components/odontograma/Odontograma'
-import type { Expediente, HistorialClinico, PlanTratamiento, Pago } from '@/types'
+import FichaClinica from '@/components/expedientes/FichaClinica'
+import type { Expediente, HistorialClinico, PlanTratamiento, Pago, AntecedentesPatologicos, ConsentimientoInformado } from '@/types'
 
-type Tab = 'historial' | 'odontograma' | 'presupuesto' | 'pagos'
+type Tab = 'ficha' | 'historial' | 'odontograma' | 'presupuesto' | 'pagos'
 
 interface ExpedienteDetalle extends Expediente {
   historial: HistorialClinico[]
   planTratamiento: PlanTratamiento[]
   pagos: Pago[]
+  antecedentes: AntecedentesPatologicos | null
+  consentimiento: ConsentimientoInformado | null
   totalPresupuesto: number
   totalPagado: number
   saldoPendiente: number
@@ -20,7 +23,7 @@ export default function ExpedienteDetallePage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
-  const [tab, setTab] = useState<Tab>('historial')
+  const [tab, setTab] = useState<Tab>('ficha')
   const [exp, setExp] = useState<ExpedienteDetalle | null>(null)
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<{ id: number; rol: string } | null>(null)
@@ -225,6 +228,7 @@ export default function ExpedienteDetallePage() {
       {/* Tabs */}
       <div className="tabs-bar">
         {([
+          { key: 'ficha', label: 'Ficha clínica', icon: 'ti-clipboard-text' },
           { key: 'historial', label: 'Historial clínico', icon: 'ti-notes' },
           { key: 'odontograma', label: 'Odontograma', icon: 'ti-tooth' },
           { key: 'presupuesto', label: 'Plan de tratamiento', icon: 'ti-list-check' },
@@ -235,6 +239,11 @@ export default function ExpedienteDetallePage() {
           </button>
         ))}
       </div>
+
+      {/* ── Tab: Ficha clínica (identificación, antecedentes, consentimiento) ── */}
+      {tab === 'ficha' && (
+        <FichaClinica expediente={exp} onUpdated={load} />
+      )}
 
       {/* ── Tab: Historial ── */}
       {tab === 'historial' && (
