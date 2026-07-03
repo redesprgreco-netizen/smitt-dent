@@ -292,3 +292,9 @@ export interface SaldoExpediente {
   totalPagado: number
   saldoPendiente: number
 }
+export interface Expediente {
+  ...
+  montoTotalManual?: number | null;
+  numeroPagosPlan?: number | null;
+  // ... resto de campos
+}

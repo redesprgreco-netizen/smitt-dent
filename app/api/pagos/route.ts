@@ -55,8 +55,31 @@ export async function POST(req: NextRequest) {
 
     if (Number(monto) <= 0) return badRequest('El monto debe ser mayor a 0')
 
-    const exp = await prisma.expediente.findUnique({ where: { id: parseInt(expedienteId) } })
+    const exp = await prisma.expediente.findUnique({ 
+      where: { id: parseInt(expedienteId) },
+      include: { planTratamiento: true, pagos: true }
+    })
     if (!exp) return badRequest('Expediente no encontrado')
+
+    // === VALIDACIÓN DE SALDO PENDIENTE ===
+    const totalFromItems = exp.planTratamiento.reduce(
+      (acc, pt) => acc + Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100), 0
+    )
+
+    const totalPresupuesto = exp.montoTotalManual 
+      ? Number(exp.montoTotalManual) 
+      : totalFromItems
+
+    const totalPagado = exp.pagos
+      .filter(p => p.estado === 'activo')
+      .reduce((acc, p) => acc + Number(p.monto), 0)
+
+    const saldoPendiente = totalPresupuesto - totalPagado
+
+    if (Number(monto) > saldoPendiente) {
+      return badRequest(`El monto excede el saldo pendiente ($${saldoPendiente.toFixed(2)})`)
+    }
+    // =====================================
 
     // Generar folio de recibo
     const count = await prisma.pago.count()

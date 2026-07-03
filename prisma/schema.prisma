@@ -408,3 +408,11 @@ model Bitacora {
 
   @@map("bitacora")
 }
+model Expediente {
+  ...
+  // Campos nuevos para plan de pagos
+  montoTotalManual Decimal?  @map("monto_total_manual") @db.Decimal(10, 2)
+  numeroPagosPlan   Int?      @map("numero_pagos_plan")
+
+  ...
+}
