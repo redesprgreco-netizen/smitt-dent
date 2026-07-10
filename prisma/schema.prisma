@@ -76,8 +76,6 @@ enum Sexo {
   otro
 }
 
-// ==================== MODELOS ====================
-
 model Usuario {
   id           Int      @id @default(autoincrement())
   nombre       String   @db.VarChar(80)
@@ -149,7 +147,6 @@ model Expediente {
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
-  // Campos adicionales de ficha
   sexo Sexo?
   ocupacion String? @db.VarChar(120)
   domicilio String? @db.VarChar(200)
@@ -160,11 +157,10 @@ model Expediente {
   llenadoPorNombre String? @map("llenado_por_nombre") @db.VarChar(120)
   llenadoPorParentesco String? @map("llenado_por_parentesco") @db.VarChar(60)
 
-  // === CAMPOS NUEVOS PARA PLAN DE PAGOS ===
+  // Campos para plan de pagos
   montoTotalManual Decimal?  @map("monto_total_manual") @db.Decimal(10, 2)
   numeroPagosPlan   Int?      @map("numero_pagos_plan")
 
-  // Relaciones
   doctora         Usuario              @relation("ExpedienteDoctora", fields: [doctoraId], references: [id])
   creador         Usuario              @relation("ExpedienteCreador", fields: [createdBy], references: [id])
   citas           Cita[]
