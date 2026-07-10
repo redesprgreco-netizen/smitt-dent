@@ -9,6 +9,7 @@ export default function ConfiguracionSubNav() {
       {[
         { href: '/configuracion/usuarios', label: 'Usuarios', icon: 'ti-users' },
         { href: '/configuracion/bitacora', label: 'Bitácora', icon: 'ti-history' },
+        { href: '/configuracion/contratos', label: 'Contratos y firmas', icon: 'ti-signature' },
       ].map(t => (
         <Link key={t.href} href={t.href} style={{ textDecoration: 'none' }}>
           <button className={`tab-btn${pathname.startsWith(t.href) ? ' active' : ''}`}>

@@ -76,6 +76,8 @@ enum Sexo {
   otro
 }
 
+// ==================== MODELOS ====================
+
 model Usuario {
   id           Int      @id @default(autoincrement())
   nombre       String   @db.VarChar(80)
@@ -105,6 +107,8 @@ model Usuario {
   bitacora             Bitacora[]           @relation("BitacoraUsuario")
   antecedentesActualizados AntecedentesPatologicos[] @relation("AntecedentesUpdater")
   consentimientosCreados ConsentimientoInformado[] @relation("ConsentimientoCreador")
+  contratosSubidos    Contrato[]           @relation("ContratoSubidoPor")
+  firmasCreadas       FirmaContrato[]      @relation("FirmaCreadoPor")
 
   @@map("usuarios")
 }
@@ -147,6 +151,7 @@ model Expediente {
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
+  // Campos adicionales de ficha
   sexo Sexo?
   ocupacion String? @db.VarChar(120)
   domicilio String? @db.VarChar(200)
@@ -157,10 +162,11 @@ model Expediente {
   llenadoPorNombre String? @map("llenado_por_nombre") @db.VarChar(120)
   llenadoPorParentesco String? @map("llenado_por_parentesco") @db.VarChar(60)
 
-  // Campos para plan de pagos
+  // === CAMPOS NUEVOS PARA PLAN DE PAGOS ===
   montoTotalManual Decimal?  @map("monto_total_manual") @db.Decimal(10, 2)
   numeroPagosPlan   Int?      @map("numero_pagos_plan")
 
+  // Relaciones
   doctora         Usuario              @relation("ExpedienteDoctora", fields: [doctoraId], references: [id])
   creador         Usuario              @relation("ExpedienteCreador", fields: [createdBy], references: [id])
   citas           Cita[]
@@ -362,4 +368,38 @@ model Bitacora {
   createdAt      DateTime @default(now()) @map("created_at")
   usuario Usuario? @relation("BitacoraUsuario", fields: [usuarioId], references: [id])
   @@map("bitacora")
+}
+model Contrato {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @db.VarChar(150)
+  storagePath String   @map("storage_path") @db.VarChar(255)
+  activo      Boolean  @default(true)
+  subidoPor   Int?     @map("subido_por")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  usuario Usuario?        @relation("ContratoSubidoPor", fields: [subidoPor], references: [id])
+  firmas  FirmaContrato[]
+
+  @@map("contratos")
+}
+
+model FirmaContrato {
+  id                Int       @id @default(autoincrement())
+  token             String    @unique @db.VarChar(64)
+  contratoId        Int       @map("contrato_id")
+  clienteNombre     String    @map("cliente_nombre") @db.VarChar(150)
+  clienteTelefono   String?   @map("cliente_telefono") @db.VarChar(30)
+  estado            String    @default("pendiente") @db.VarChar(20)
+  firmaStoragePath  String?   @map("firma_storage_path") @db.VarChar(255)
+  huellaStoragePath String?   @map("huella_storage_path") @db.VarChar(255)
+  ipAddress         String?   @map("ip_address") @db.VarChar(45)
+  userAgent         String?   @map("user_agent") @db.VarChar(255)
+  firmadoEn         DateTime? @map("firmado_en")
+  creadoPor         Int?      @map("creado_por")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  contrato Contrato @relation(fields: [contratoId], references: [id])
+  usuario  Usuario? @relation("FirmaCreadoPor", fields: [creadoPor], references: [id])
+
+  @@map("firmas_contrato")
 }

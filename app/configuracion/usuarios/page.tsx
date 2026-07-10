@@ -46,6 +46,17 @@ export default function UsuariosPage() {
   const activos = usuarios.filter(u => u.estado === 'activo')
   const inactivos = usuarios.filter(u => u.estado === 'inactivo')
 
+  async function deleteUsuario(id: number, nombreCompleto: string) {
+    if (!confirm(`¿Eliminar permanentemente a ${nombreCompleto}? Esta acción no se puede deshacer.`)) return
+    const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' })
+    const data = await res.json()
+    if (res.ok) {
+      setUsuarios(prev => prev.filter(u => u.id !== id))
+    } else {
+      alert(data.error ?? 'No se pudo eliminar')
+    }
+  }
+
   function rolLabel(rol: string) {
     return rol === 'admin' ? 'Administradora' : rol === 'visitante' ? 'Visitante' : 'Doctora'
   }
@@ -161,9 +172,14 @@ export default function UsuariosPage() {
                         </button>
                       )}
                       {u.estado === 'inactivo' && (
-                        <button className="btn btn-secondary btn-sm" onClick={() => updateUsuario(u.id, { estado: 'activo' })}>
-                          <i className="ti ti-user-check" /> Reactivar
-                        </button>
+                        <>
+                          <button className="btn btn-secondary btn-sm" onClick={() => updateUsuario(u.id, { estado: 'activo' })}>
+                            <i className="ti ti-user-check" /> Reactivar
+                          </button>
+                          <button className="btn btn-danger btn-sm" onClick={() => deleteUsuario(u.id, `${u.nombre} ${u.apellido}`)}>
+                            <i className="ti ti-trash" /> Eliminar
+                          </button>
+                        </>
                       )}
                       <button className="btn btn-secondary btn-sm" onClick={() => setEditingId(editingId === u.id ? null : u.id)}>
                         <i className="ti ti-edit" />

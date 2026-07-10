@@ -9,7 +9,7 @@ const SECRET = new TextEncoder().encode(
 const COOKIE = 'sd_token'
 
 // Rutas públicas
-const PUBLIC_PATHS = ['/login', '/register', '/api/auth/login', '/api/auth/register']
+const PUBLIC_PATHS = ['/login', '/register', '/api/auth/login', '/api/auth/register', '/firmar', '/api/firmar']
 
 // Rutas que cualquier usuario autenticado puede acceder
 const AUTH_PATHS = [
@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Rutas solo admin
-    const ADMIN_PATHS = ['/configuracion', '/reportes', '/api/reportes', '/api/bitacora', '/api/usuarios']
+    const ADMIN_PATHS = ['/configuracion', '/reportes', '/api/reportes', '/api/bitacora', '/api/usuarios', '/api/contratos', '/api/firmas']
     if (ADMIN_PATHS.some(p => pathname.startsWith(p))) {
       if (payload.rol !== 'admin') {
         return NextResponse.json({ ok: false, error: 'Sin permiso' }, { status: 403 })

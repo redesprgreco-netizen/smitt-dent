@@ -69,3 +69,52 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return serverError(e)
   }
 }
+
+// Eliminar definitivamente (solo si no tiene historial relacionado)
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const auth = await requireAuth(['admin'])
+  if ('status' in auth) return auth
+  const { session } = auth
+
+  const id = parseInt(params.id)
+  if (id === session.sub) return badRequest('No puedes eliminar tu propia cuenta')
+
+  const user = await prisma.usuario.findUnique({ where: { id } })
+  if (!user) return notFound('Usuario no encontrado')
+
+  const [citas, expedientes] = await Promise.all([
+    prisma.cita.count({ where: { doctoraId: id } }),
+    prisma.expediente.count({ where: { doctoraId: id } }),
+  ])
+
+  if (citas > 0 || expedientes > 0) {
+    return badRequest(
+      `No se puede eliminar: tiene ${citas} cita(s) y ${expedientes} expediente(s) asociados. ` +
+      `Para conservar el historial de tus pacientes, desactiva a este usuario en vez de eliminarlo.`
+    )
+  }
+
+  try {
+    await prisma.usuario.delete({ where: { id } })
+
+    await logAccion({
+      usuarioId: session.sub,
+      accion: 'eliminar_usuario',
+      tablaAfectada: 'usuarios',
+      registroId: id,
+      valorAnterior: { nombre: user.nombre, apellido: user.apellido, correo: user.correo, rol: user.rol },
+      valorNuevo: null,
+      ipAddress: getIp(req),
+    })
+
+    return ok({ eliminado: true })
+  } catch (e: unknown) {
+    if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2003') {
+      return badRequest(
+        'No se puede eliminar: este usuario tiene otros registros asociados en el sistema. ' +
+        'Desactívalo en vez de eliminarlo para conservar el historial.'
+      )
+    }
+    return serverError(e)
+  }
+}
