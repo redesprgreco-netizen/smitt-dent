@@ -4,9 +4,10 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Odontograma from '@/components/odontograma/Odontograma'
 import FichaClinica from '@/components/expedientes/FichaClinica'
+import ContratosTab from '@/components/expedientes/ContratosTab'
 import type { Expediente, HistorialClinico, PlanTratamiento, Pago, AntecedentesPatologicos, ConsentimientoInformado } from '@/types'
 
-type Tab = 'ficha' | 'historial' | 'odontograma' | 'presupuesto' | 'pagos'
+type Tab = 'ficha' | 'historial' | 'odontograma' | 'presupuesto' | 'pagos' | 'contratos'
 
 interface ExpedienteDetalle extends Expediente {
   historial: HistorialClinico[]
@@ -258,6 +259,7 @@ export default function ExpedienteDetallePage() {
           { key: 'odontograma', label: 'Odontograma', icon: 'ti-tooth' },
           { key: 'presupuesto', label: 'Plan de tratamiento', icon: 'ti-list-check' },
           { key: 'pagos', label: 'Pagos', icon: 'ti-cash' },
+          { key: 'contratos', label: 'Contratos', icon: 'ti-signature' },
         ] as const).map(t => (
           <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
             <i className={`ti ${t.icon}`} style={{ marginRight: 6 }} />{t.label}
@@ -511,6 +513,9 @@ export default function ExpedienteDetallePage() {
           )}
         </div>
       )}
+
+      {/* Tab: Contratos */}
+      {tab === 'contratos' && <ContratosTab expedienteId={parseInt(id)} pacienteNombre={`${exp.nombre} ${exp.apellido}`} />}
     </div>
   )
 }

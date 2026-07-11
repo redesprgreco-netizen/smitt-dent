@@ -170,6 +170,7 @@ model Expediente {
   doctora         Usuario              @relation("ExpedienteDoctora", fields: [doctoraId], references: [id])
   creador         Usuario              @relation("ExpedienteCreador", fields: [createdBy], references: [id])
   citas           Cita[]
+  firmasContrato  FirmaContrato[]      @relation("FirmasExpediente")
   historial       HistorialClinico[]
   odontograma     OdontogramaPieza[]
   odontogramaHist OdontogramaHistorial[]
@@ -387,6 +388,7 @@ model FirmaContrato {
   id                Int       @id @default(autoincrement())
   token             String    @unique @db.VarChar(64)
   contratoId        Int       @map("contrato_id")
+  expedienteId      Int?      @map("expediente_id")
   clienteNombre     String    @map("cliente_nombre") @db.VarChar(150)
   clienteTelefono   String?   @map("cliente_telefono") @db.VarChar(30)
   estado            String    @default("pendiente") @db.VarChar(20)
@@ -398,8 +400,9 @@ model FirmaContrato {
   creadoPor         Int?      @map("creado_por")
   createdAt         DateTime  @default(now()) @map("created_at")
 
-  contrato Contrato @relation(fields: [contratoId], references: [id])
-  usuario  Usuario? @relation("FirmaCreadoPor", fields: [creadoPor], references: [id])
+  contrato   Contrato    @relation(fields: [contratoId], references: [id])
+  usuario    Usuario?    @relation("FirmaCreadoPor", fields: [creadoPor], references: [id])
+  expediente Expediente? @relation("FirmasExpediente", fields: [expedienteId], references: [id])
 
   @@map("firmas_contrato")
 }
