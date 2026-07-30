@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSessionFromCookie } from '@/lib/auth'
-import Topbar from '@/components/layout/Topbar'
-import Sidebar from '@/components/layout/Sidebar'
+import AppShell from '@/components/layout/AppShell'
 
 export default async function ReportesLayout({ children }: { children: React.ReactNode }) {
   const session = await getSessionFromCookie()
@@ -9,10 +8,8 @@ export default async function ReportesLayout({ children }: { children: React.Rea
   if (session.rol !== 'admin') redirect('/dashboard')
 
   return (
-    <>
-      <Topbar nombre={session.nombre} apellido={session.apellido} rol={session.rol} />
-      <Sidebar rol={session.rol} />
-      <main className="layout-main">{children}</main>
-    </>
+    <AppShell nombre={session.nombre} apellido={session.apellido} rol={session.rol}>
+      {children}
+    </AppShell>
   )
 }

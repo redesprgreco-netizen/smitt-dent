@@ -196,7 +196,7 @@ export default function AgendaPage() {
                   background: cita.doctora?.colorAgenda ? `${cita.doctora.colorAgenda}22` : '#dbeafe',
                   color: cita.doctora?.colorAgenda ?? '#1e40af',
                 }}>
-                  {cita.doctora?.nombre}
+                  {cita.doctora?.nombre ?? cita.doctoraNombre ?? 'Sin asignar'}
                 </span>
                 <span className={`pill ${
                   cita.estado === 'confirmada' ? 'pill-green'

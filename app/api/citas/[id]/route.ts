@@ -44,7 +44,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const body = await req.json()
-    const { nombrePaciente, apellidoPaciente, asunto, fecha, hora, notas, estado, expedienteId } = body
+    const { nombrePaciente, apellidoPaciente, asunto, fecha, hora, notas, estado, expedienteId, doctoraId } = body
+
+    let doctoraNombre: string | undefined
+    if (doctoraId !== undefined && parseInt(doctoraId) !== cita.doctoraId) {
+      const doctora = await prisma.usuario.findUnique({
+        where: { id: parseInt(doctoraId) },
+        select: { nombre: true, apellido: true },
+      })
+      if (!doctora) return badRequest('Doctora no encontrada')
+      doctoraNombre = `${doctora.nombre} ${doctora.apellido}`
+    }
 
     const updated = await prisma.cita.update({
       where: { id },
@@ -57,6 +67,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(notas !== undefined && { notas: notas?.trim() || null }),
         ...(estado           && { estado }),
         ...(expedienteId !== undefined && { expedienteId: expedienteId ? parseInt(expedienteId) : null }),
+        ...(doctoraId !== undefined && { doctoraId: parseInt(doctoraId) }),
+        ...(doctoraNombre !== undefined && { doctoraNombre }),
       },
       include: {
         doctora: { select: { id: true, nombre: true, apellido: true, colorAgenda: true } },
@@ -70,6 +82,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 }
 
+// Elimina la cita definitivamente del calendario.
+// Para solo cancelarla (y conservar el registro), usa PATCH con { estado: 'cancelada' }.
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const auth = await requireAuth()
   if ('status' in auth) return auth
@@ -80,9 +94,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!cita) return notFound('Cita no encontrada')
 
   if (session.rol !== 'admin' && cita.doctoraId !== session.sub)
-    return forbidden('Solo puedes cancelar tus propias citas')
+    return forbidden('Solo puedes eliminar tus propias citas')
 
-  // En vez de eliminar, marcar como cancelada
-  const updated = await prisma.cita.update({ where: { id }, data: { estado: 'cancelada' } })
-  return ok(normalize(updated))
+  await prisma.cita.delete({ where: { id } })
+  return ok({ eliminada: true })
 }

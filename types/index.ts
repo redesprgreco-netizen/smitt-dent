@@ -35,13 +35,15 @@ export interface Cita {
   fecha: string
   hora: string
   notas: string | null
-  doctoraId: number
+  doctoraId: number | null
+  doctoraNombre: string | null
   expedienteId: number | null
   estado: EstadoCita
-  createdBy: number
+  createdBy: number | null
+  creadoPorNombre: string | null
   createdAt: string
   updatedAt: string
-  doctora?: Pick<Usuario, 'id' | 'nombre' | 'apellido' | 'colorAgenda'>
+  doctora?: Pick<Usuario, 'id' | 'nombre' | 'apellido' | 'colorAgenda'> | null
 }
 
 export interface Expediente {
@@ -54,9 +56,10 @@ export interface Expediente {
   correo: string | null
   alergias: string | null
   motivoInicial: string | null
-  doctoraId: number
+  doctoraId: number | null
+  doctoraNombre: string | null
   estado: EstadoExpediente
-  createdBy: number
+  createdBy: number | null
   createdAt: string
   updatedAt: string
 
@@ -76,7 +79,7 @@ export interface Expediente {
   numeroPagosPlan?: number | null
 
   // Joined
-  doctora?: Pick<Usuario, 'id' | 'nombre' | 'apellido'>
+  doctora?: Pick<Usuario, 'id' | 'nombre' | 'apellido'> | null
   antecedentes?: AntecedentesPatologicos | null
   consentimiento?: ConsentimientoInformado | null
 }
@@ -150,9 +153,11 @@ export interface HistorialClinico {
   descripcion: string
   esCorreccion: boolean
   notaOriginalId: number | null
-  createdBy: number
+  createdBy: number | null
+  creadoPorNombre: string | null
   createdAt: string
   autor?: Pick<Usuario, 'id' | 'nombre' | 'apellido' | 'rol'>
+  creador?: Pick<Usuario, 'id' | 'nombre' | 'apellido' | 'rol'>
   correcciones?: HistorialClinico[]
 }
 
@@ -203,7 +208,8 @@ export interface Pago {
   motivoAnulacion: string | null
   anuladoPor: number | null
   anuladoAt: string | null
-  createdBy: number
+  createdBy: number | null
+  creadoPorNombre: string | null
   createdAt: string
   expediente?: Pick<Expediente, 'id' | 'folio' | 'nombre' | 'apellido'>
   creador?: Pick<Usuario, 'id' | 'nombre' | 'apellido'>

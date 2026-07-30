@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
         esCorreccion: !!esCorreccion,
         notaOriginalId: notaOriginalId ? parseInt(notaOriginalId) : null,
         createdBy:    session.sub,
+        creadoPorNombre: `${session.nombre} ${session.apellido}`,
       },
       include: {
         creador: { select: { id: true, nombre: true, apellido: true, rol: true } },

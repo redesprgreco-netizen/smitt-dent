@@ -70,6 +70,12 @@ export async function POST(req: NextRequest) {
     if (session.rol !== 'admin' && doctoraId !== session.sub)
       return badRequest('Solo puedes crear citas para ti misma')
 
+    const doctora = await prisma.usuario.findUnique({
+      where: { id: parseInt(doctoraId) },
+      select: { nombre: true, apellido: true },
+    })
+    if (!doctora) return badRequest('Doctora no encontrada')
+
     const cita = await prisma.cita.create({
       data: {
         nombrePaciente: nombrePaciente.trim(),
@@ -79,8 +85,10 @@ export async function POST(req: NextRequest) {
         hora: new Date(`1970-01-01T${hora}:00Z`),
         notas: notas?.trim() || null,
         doctoraId: parseInt(doctoraId),
+        doctoraNombre: `${doctora.nombre} ${doctora.apellido}`,
         expedienteId: expedienteId ? parseInt(expedienteId) : null,
         createdBy: session.sub,
+        creadoPorNombre: `${session.nombre} ${session.apellido}`,
       },
       include: {
         doctora: { select: { id: true, nombre: true, apellido: true, colorAgenda: true } },

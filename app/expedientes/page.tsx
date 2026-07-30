@@ -100,7 +100,7 @@ export default function ExpedientesListPage() {
                   <td style={{ fontWeight: 500 }}>{exp.nombre} {exp.apellido}</td>
                   <td>{edad(exp.fechaNacimiento) ?? '—'}</td>
                   <td>{exp.telefono ?? '—'}</td>
-                  <td>{exp.doctora ? `${exp.doctora.nombre} ${exp.doctora.apellido}` : '—'}</td>
+                  <td>{exp.doctora ? `${exp.doctora.nombre} ${exp.doctora.apellido}` : exp.doctoraNombre ?? '—'}</td>
                   <td>
                     <span className={`pill ${exp.estado === 'activo' ? 'pill-green' : 'pill-gray'}`}>{exp.estado}</span>
                   </td>

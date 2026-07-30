@@ -67,7 +67,24 @@ export default function AppointmentModal({
 
   async function handleCancel() {
     if (!editingCita) return
-    if (!confirm('¿Cancelar esta cita?')) return
+    if (!confirm('¿Cancelar esta cita? Quedará marcada como cancelada pero seguirá en el historial.')) return
+    setLoading(true)
+    try {
+      await fetch(`/api/citas/${editingCita.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'cancelada' }),
+      })
+      onSaved()
+      onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!editingCita) return
+    if (!confirm('¿Eliminar esta cita definitivamente? No se puede deshacer y desaparecerá del calendario.')) return
     setLoading(true)
     try {
       await fetch(`/api/citas/${editingCita.id}`, { method: 'DELETE' })
@@ -145,10 +162,15 @@ export default function AppointmentModal({
             </div>
           )}
 
-          <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-            {editingCita && (
-              <button type="button" className="btn btn-danger" onClick={handleCancel} disabled={loading} style={{ marginRight: 'auto' }}>
+          <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20, flexWrap: 'wrap' }}>
+            {editingCita && editingCita.estado !== 'cancelada' && (
+              <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={loading} style={{ marginRight: 'auto' }}>
                 <i className="ti ti-calendar-cancel" /> Cancelar cita
+              </button>
+            )}
+            {editingCita && (
+              <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={loading} style={editingCita.estado !== 'cancelada' ? {} : { marginRight: 'auto' }}>
+                <i className="ti ti-trash" /> Eliminar cita
               </button>
             )}
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>

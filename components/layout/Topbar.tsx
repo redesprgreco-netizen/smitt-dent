@@ -6,9 +6,10 @@ interface TopbarProps {
   nombre: string
   apellido: string
   rol: string
+  onMenuClick?: () => void
 }
 
-export default function Topbar({ nombre, apellido, rol }: TopbarProps) {
+export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarProps) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const initials = `${nombre[0]}${apellido[0]}`.toUpperCase()
@@ -20,6 +21,19 @@ export default function Topbar({ nombre, apellido, rol }: TopbarProps) {
 
   return (
     <header className="layout-topbar">
+      {/* Botón menú (solo móvil) */}
+      <button
+        onClick={onMenuClick}
+        aria-label="Abrir menú"
+        className="topbar-menu-btn"
+        style={{
+          display: 'none', background: 'none', border: 'none', cursor: 'pointer',
+          color: '#fff', fontSize: 22, padding: 4, alignItems: 'center',
+        }}
+      >
+        <i className="ti ti-menu-2" />
+      </button>
+
       {/* Logo */}
       <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
         <div style={{

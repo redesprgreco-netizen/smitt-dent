@@ -4,6 +4,8 @@ import { usePathname } from 'next/navigation'
 
 interface SidebarProps {
   rol: string
+  open?: boolean
+  onNavigate?: () => void
 }
 
 const NAV_ITEMS = [
@@ -16,12 +18,12 @@ const NAV_ITEMS = [
   { href: '/configuracion',icon: 'ti-settings',         label: 'Configuración',   section: null, adminOnly: true },
 ]
 
-export default function Sidebar({ rol }: SidebarProps) {
+export default function Sidebar({ rol, open, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   let lastSection = ''
 
   return (
-    <nav className="layout-sidebar">
+    <nav className={`layout-sidebar${open ? ' open' : ''}`}>
       <div style={{ flex: 1 }}>
         {NAV_ITEMS.filter(item => !item.adminOnly || rol === 'admin').map(item => {
           const showSection = item.section && item.section !== lastSection
@@ -33,7 +35,7 @@ export default function Sidebar({ rol }: SidebarProps) {
               {showSection && (
                 <div className="nav-section-label">{item.section}</div>
               )}
-              <Link href={item.href} className={`nav-item${isActive ? ' active' : ''}`}>
+              <Link href={item.href} className={`nav-item${isActive ? ' active' : ''}`} onClick={onNavigate}>
                 <i className={`ti ${item.icon}`} />
                 {item.label}
               </Link>
@@ -47,6 +49,7 @@ export default function Sidebar({ rol }: SidebarProps) {
           <Link
             href="/configuracion/usuarios"
             className={`nav-item${pathname.startsWith('/configuracion/usuarios') ? ' active' : ''}`}
+            onClick={onNavigate}
           >
             <i className="ti ti-users" />
             Usuarios

@@ -91,7 +91,7 @@ model Usuario {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  aprobador            Usuario?             @relation("AprobacionUsuario", fields: [aprobadoPor], references: [id])
+  aprobador            Usuario?             @relation("AprobacionUsuario", fields: [aprobadoPor], references: [id], onDelete: SetNull)
   aprobados            Usuario[]            @relation("AprobacionUsuario")
   citasAsignadas       Cita[]               @relation("CitaDoctora")
   citasCreadas         Cita[]               @relation("CitaCreador")
@@ -121,17 +121,20 @@ model Cita {
   fecha            DateTime   @db.Date
   hora             DateTime   @db.Time()
   notas            String?    @db.Text
-  doctoraId        Int        @map("doctora_id")
+  doctoraId        Int?       @map("doctora_id")
+  doctoraNombre    String?    @map("doctora_nombre") @db.VarChar(160)
   expedienteId     Int?       @map("expediente_id")
   estado           EstadoCita @default(pendiente)
-  createdBy        Int        @map("created_by")
+  createdBy        Int?       @map("created_by")
+  creadoPorNombre  String?    @map("creado_por_nombre") @db.VarChar(160)
   createdAt        DateTime   @default(now()) @map("created_at")
   updatedAt        DateTime   @updatedAt @map("updated_at")
 
-  doctora    Usuario     @relation("CitaDoctora", fields: [doctoraId], references: [id])
-  creador    Usuario     @relation("CitaCreador", fields: [createdBy], references: [id])
+  doctora    Usuario?    @relation("CitaDoctora", fields: [doctoraId], references: [id], onDelete: SetNull)
+  creador    Usuario?    @relation("CitaCreador", fields: [createdBy], references: [id], onDelete: SetNull)
   expediente Expediente? @relation(fields: [expedienteId], references: [id])
 
+  @@unique([doctoraId, fecha, hora])
   @@map("citas")
 }
 
@@ -145,9 +148,10 @@ model Expediente {
   correo        String?          @db.VarChar(120)
   alergias      String?          @db.Text
   motivoInicial String?          @map("motivo_inicial") @db.Text
-  doctoraId     Int              @map("doctora_id")
+  doctoraId     Int?             @map("doctora_id")
+  doctoraNombre String?          @map("doctora_nombre") @db.VarChar(160)
   estado        EstadoExpediente @default(activo)
-  createdBy     Int              @map("created_by")
+  createdBy     Int?             @map("created_by")
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
@@ -167,8 +171,8 @@ model Expediente {
   numeroPagosPlan   Int?      @map("numero_pagos_plan")
 
   // Relaciones
-  doctora         Usuario              @relation("ExpedienteDoctora", fields: [doctoraId], references: [id])
-  creador         Usuario              @relation("ExpedienteCreador", fields: [createdBy], references: [id])
+  doctora         Usuario?             @relation("ExpedienteDoctora", fields: [doctoraId], references: [id], onDelete: SetNull)
+  creador         Usuario?             @relation("ExpedienteCreador", fields: [createdBy], references: [id], onDelete: SetNull)
   citas           Cita[]
   firmasContrato  FirmaContrato[]      @relation("FirmasExpediente")
   historial       HistorialClinico[]
@@ -225,11 +229,11 @@ model AntecedentesPatologicos {
   alcoholismo Boolean @default(false)
   alcoholCantSemana String? @map("alcohol_cant_semana") @db.VarChar(60)
   alcoholAnios Int? @map("alcohol_anios")
-  updatedBy Int @map("updated_by")
+  updatedBy Int? @map("updated_by")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   expediente Expediente @relation(fields: [expedienteId], references: [id])
-  actualizadoPor Usuario @relation("AntecedentesUpdater", fields: [updatedBy], references: [id])
+  actualizadoPor Usuario? @relation("AntecedentesUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
   @@map("antecedentes_patologicos")
 }
 
@@ -242,11 +246,11 @@ model ConsentimientoInformado {
   aceptado Boolean @default(false)
   firmaNombre String? @map("firma_nombre") @db.VarChar(150)
   fechaFirma DateTime? @map("fecha_firma") @db.Date
-  createdBy Int @map("created_by")
+  createdBy Int? @map("created_by")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   expediente Expediente @relation(fields: [expedienteId], references: [id])
-  creador Usuario @relation("ConsentimientoCreador", fields: [createdBy], references: [id])
+  creador Usuario? @relation("ConsentimientoCreador", fields: [createdBy], references: [id], onDelete: SetNull)
   @@map("consentimiento_informado")
 }
 
@@ -257,10 +261,11 @@ model HistorialClinico {
   descripcion    String   @db.Text
   esCorreccion   Boolean  @default(false) @map("es_correccion")
   notaOriginalId Int?     @map("nota_original_id")
-  createdBy      Int      @map("created_by")
+  createdBy      Int?     @map("created_by")
+  creadoPorNombre String? @map("creado_por_nombre") @db.VarChar(160)
   createdAt      DateTime @default(now()) @map("created_at")
   expediente   Expediente        @relation(fields: [expedienteId], references: [id])
-  creador      Usuario           @relation("HistorialCreador", fields: [createdBy], references: [id])
+  creador      Usuario?          @relation("HistorialCreador", fields: [createdBy], references: [id], onDelete: SetNull)
   notaOriginal HistorialClinico? @relation("CorreccionNota", fields: [notaOriginalId], references: [id])
   correcciones HistorialClinico[] @relation("CorreccionNota")
   @@map("historial_clinico")
@@ -272,10 +277,10 @@ model OdontogramaPieza {
   numeroPieza  Int         @map("numero_pieza") @db.SmallInt
   estado       EstadoPieza @default(sin_tratamiento)
   notas        String?     @db.Text
-  updatedBy    Int         @map("updated_by")
+  updatedBy    Int?        @map("updated_by")
   updatedAt    DateTime    @updatedAt @map("updated_at")
   expediente Expediente @relation(fields: [expedienteId], references: [id])
-  updater    Usuario    @relation("OdontogramaUpdater", fields: [updatedBy], references: [id])
+  updater    Usuario?   @relation("OdontogramaUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
   @@unique([expedienteId, numeroPieza])
   @@map("odontograma_piezas")
 }
@@ -286,10 +291,10 @@ model OdontogramaHistorial {
   numeroPieza    Int         @map("numero_pieza") @db.SmallInt
   estadoAnterior EstadoPieza @map("estado_anterior")
   estadoNuevo    EstadoPieza @map("estado_nuevo")
-  changedBy      Int         @map("changed_by")
+  changedBy      Int?        @map("changed_by")
   changedAt      DateTime    @default(now()) @map("changed_at")
   expediente Expediente @relation(fields: [expedienteId], references: [id])
-  changer    Usuario    @relation("OdontogramaChanger", fields: [changedBy], references: [id])
+  changer    Usuario?   @relation("OdontogramaChanger", fields: [changedBy], references: [id], onDelete: SetNull)
   @@map("odontograma_historial")
 }
 
@@ -303,11 +308,11 @@ model PlanTratamiento {
   subtotal     Decimal           @db.Decimal(10, 2)
   descuentoPct Decimal           @default(0) @map("descuento_pct") @db.Decimal(5, 2)
   estado       EstadoTratamiento @default(pendiente)
-  createdBy    Int               @map("created_by")
+  createdBy    Int?              @map("created_by")
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
   expediente Expediente @relation(fields: [expedienteId], references: [id])
-  creador    Usuario    @relation("PlanCreador", fields: [createdBy], references: [id])
+  creador    Usuario?   @relation("PlanCreador", fields: [createdBy], references: [id], onDelete: SetNull)
   @@map("plan_tratamiento")
 }
 
@@ -322,11 +327,12 @@ model Pago {
   motivoAnulacion String?   @map("motivo_anulacion") @db.Text
   anuladoPor     Int?       @map("anulado_por")
   anuladoAt      DateTime?  @map("anulado_at")
-  createdBy      Int        @map("created_by")
+  createdBy      Int?       @map("created_by")
+  creadoPorNombre String?   @map("creado_por_nombre") @db.VarChar(160)
   createdAt      DateTime   @default(now()) @map("created_at")
   expediente Expediente @relation(fields: [expedienteId], references: [id])
-  creador    Usuario    @relation("PagoCreador", fields: [createdBy], references: [id])
-  anulador   Usuario?   @relation("PagoAnulador", fields: [anuladoPor], references: [id])
+  creador    Usuario?   @relation("PagoCreador", fields: [createdBy], references: [id], onDelete: SetNull)
+  anulador   Usuario?   @relation("PagoAnulador", fields: [anuladoPor], references: [id], onDelete: SetNull)
   @@map("pagos")
 }
 
@@ -350,10 +356,10 @@ model InventarioMovimiento {
   tipo       TipoMovimiento
   cantidad   Decimal        @db.Decimal(8, 2)
   notas      String?        @db.Text
-  createdBy  Int            @map("created_by")
+  createdBy  Int?           @map("created_by")
   createdAt  DateTime       @default(now()) @map("created_at")
   articulo InventarioArticulo @relation(fields: [articuloId], references: [id])
-  creador  Usuario            @relation("MovimientoCreador", fields: [createdBy], references: [id])
+  creador  Usuario?           @relation("MovimientoCreador", fields: [createdBy], references: [id], onDelete: SetNull)
   @@map("inventario_movimientos")
 }
 
@@ -367,7 +373,7 @@ model Bitacora {
   valorNuevo     Json?    @map("valor_nuevo")
   ipAddress      String?  @map("ip_address") @db.VarChar(45)
   createdAt      DateTime @default(now()) @map("created_at")
-  usuario Usuario? @relation("BitacoraUsuario", fields: [usuarioId], references: [id])
+  usuario Usuario? @relation("BitacoraUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
   @@map("bitacora")
 }
 model Contrato {
@@ -378,7 +384,7 @@ model Contrato {
   subidoPor   Int?     @map("subido_por")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  usuario Usuario?        @relation("ContratoSubidoPor", fields: [subidoPor], references: [id])
+  usuario Usuario?        @relation("ContratoSubidoPor", fields: [subidoPor], references: [id], onDelete: SetNull)
   firmas  FirmaContrato[]
 
   @@map("contratos")
@@ -401,7 +407,7 @@ model FirmaContrato {
   createdAt         DateTime  @default(now()) @map("created_at")
 
   contrato   Contrato    @relation(fields: [contratoId], references: [id])
-  usuario    Usuario?    @relation("FirmaCreadoPor", fields: [creadoPor], references: [id])
+  usuario    Usuario?    @relation("FirmaCreadoPor", fields: [creadoPor], references: [id], onDelete: SetNull)
   expediente Expediente? @relation("FirmasExpediente", fields: [expedienteId], references: [id])
 
   @@map("firmas_contrato")

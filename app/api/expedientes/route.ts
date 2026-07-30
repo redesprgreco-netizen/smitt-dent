@@ -65,6 +65,12 @@ export async function POST(req: NextRequest) {
     const count = await prisma.expediente.count()
     const folio = `EXP-${String(count + 1).padStart(4, '0')}`
 
+    const doctoraIdFinal = doctoraId ? parseInt(doctoraId) : session.sub
+    const doctora = await prisma.usuario.findUnique({
+      where: { id: doctoraIdFinal },
+      select: { nombre: true, apellido: true },
+    })
+
     const expediente = await prisma.expediente.create({
       data: {
         folio,
@@ -75,7 +81,8 @@ export async function POST(req: NextRequest) {
         correo: correo?.toLowerCase().trim() || null,
         alergias: alergias?.trim() || null,
         motivoInicial: motivoInicial?.trim() || null,
-        doctoraId: doctoraId ? parseInt(doctoraId) : session.sub,
+        doctoraId: doctoraIdFinal,
+        doctoraNombre: doctora ? `${doctora.nombre} ${doctora.apellido}` : null,
         createdBy: session.sub,
       },
       include: {

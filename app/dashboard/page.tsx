@@ -149,7 +149,7 @@ export default async function DashboardPage() {
             <div key={cita.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{
                 width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                background: cita.doctora.colorAgenda ?? 'var(--blue-accent)',
+                background: cita.doctora?.colorAgenda ?? 'var(--blue-accent)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 600, color: '#fff',
               }}>

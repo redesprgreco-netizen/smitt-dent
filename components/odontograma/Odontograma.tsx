@@ -103,13 +103,13 @@ export default function Odontograma({ expedienteId, readOnly }: Props) {
       <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 12 }}>
         Arcada superior
       </p>
-      <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px dashed var(--border)' }}>
+      <div className="odonto-row" style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px dashed var(--border)' }}>
         {CUADRANTE_SUP_DER.map(n => <Tooth key={n} num={n} />)}
         <div style={{ width: 1, background: 'var(--border)', margin: '0 4px' }} />
         {CUADRANTE_SUP_IZQ.map(n => <Tooth key={n} num={n} />)}
       </div>
 
-      <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 12 }}>
+      <div className="odonto-row" style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 12 }}>
         {CUADRANTE_INF_DER.slice().reverse().map(n => <Tooth key={n} num={n} />)}
         <div style={{ width: 1, background: 'var(--border)', margin: '0 4px' }} />
         {CUADRANTE_INF_IZQ.slice().reverse().map(n => <Tooth key={n} num={n} />)}

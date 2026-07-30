@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
         metodoPago,
         concepto: concepto?.trim() || null,
         createdBy: session.sub,
+        creadoPorNombre: `${session.nombre} ${session.apellido}`,
       },
       include: {
         expediente: { select: { id: true, folio: true, nombre: true, apellido: true } },

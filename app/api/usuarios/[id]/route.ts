@@ -70,7 +70,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 }
 
-// Eliminar definitivamente (solo si no tiene historial relacionado)
+// Eliminar definitivamente. El historial clínico (citas, expedientes,
+// notas, pagos) se conserva: antes de borrar, se guarda una "foto" del
+// nombre del usuario en esos registros (si aún no la tenían), y las
+// relaciones quedan en null gracias a ON DELETE SET NULL en la BD.
 export async function DELETE(req: NextRequest, { params }: Params) {
   const auth = await requireAuth(['admin'])
   if ('status' in auth) return auth
@@ -82,19 +85,34 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const user = await prisma.usuario.findUnique({ where: { id } })
   if (!user) return notFound('Usuario no encontrado')
 
-  const [citas, expedientes] = await Promise.all([
-    prisma.cita.count({ where: { doctoraId: id } }),
-    prisma.expediente.count({ where: { doctoraId: id } }),
-  ])
-
-  if (citas > 0 || expedientes > 0) {
-    return badRequest(
-      `No se puede eliminar: tiene ${citas} cita(s) y ${expedientes} expediente(s) asociados. ` +
-      `Para conservar el historial de tus pacientes, desactiva a este usuario en vez de eliminarlo.`
-    )
-  }
+  const nombreCompleto = `${user.nombre} ${user.apellido}`
 
   try {
+    // Rellenar snapshots de nombre donde falten, para no perder de vista
+    // "quién atendió" en el historial del paciente una vez borrado el usuario.
+    await prisma.$transaction([
+      prisma.cita.updateMany({
+        where: { doctoraId: id, doctoraNombre: null },
+        data: { doctoraNombre: nombreCompleto },
+      }),
+      prisma.cita.updateMany({
+        where: { createdBy: id, creadoPorNombre: null },
+        data: { creadoPorNombre: nombreCompleto },
+      }),
+      prisma.expediente.updateMany({
+        where: { doctoraId: id, doctoraNombre: null },
+        data: { doctoraNombre: nombreCompleto },
+      }),
+      prisma.historialClinico.updateMany({
+        where: { createdBy: id, creadoPorNombre: null },
+        data: { creadoPorNombre: nombreCompleto },
+      }),
+      prisma.pago.updateMany({
+        where: { createdBy: id, creadoPorNombre: null },
+        data: { creadoPorNombre: nombreCompleto },
+      }),
+    ])
+
     await prisma.usuario.delete({ where: { id } })
 
     await logAccion({
@@ -111,8 +129,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   } catch (e: unknown) {
     if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2003') {
       return badRequest(
-        'No se puede eliminar: este usuario tiene otros registros asociados en el sistema. ' +
-        'Desactívalo en vez de eliminarlo para conservar el historial.'
+        'No se puede eliminar: la base de datos todavía tiene una relación obligatoria hacia este usuario. ' +
+        'Ejecuta la migración supabase/migrations/004_hard_delete_support.sql en Supabase y vuelve a intentar.'
       )
     }
     return serverError(e)

@@ -220,10 +220,10 @@ export default function ExpedienteDetallePage() {
                   {exp.correo}
                 </span>
               )}
-              {exp.doctora && (
+              {(exp.doctora || exp.doctoraNombre) && (
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                   <i className="ti ti-stethoscope" style={{ marginRight: 4 }} />
-                  {exp.doctora.nombre} {exp.doctora.apellido}
+                  {exp.doctora ? `${exp.doctora.nombre} ${exp.doctora.apellido}` : exp.doctoraNombre}
                 </span>
               )}
             </div>
