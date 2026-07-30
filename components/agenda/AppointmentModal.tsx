@@ -33,7 +33,7 @@ export default function AppointmentModal({
         fecha: editingCita.fecha.slice(0, 10),
         hora: editingCita.hora || '09:00',
         notas: editingCita.notas ?? '',
-        doctoraId: editingCita.doctoraId,
+        doctoraId: editingCita.doctoraId ?? (currentUserRol === 'admin' ? (doctoras[0]?.id ?? currentUserId) : currentUserId),
       })
     } else {
       setForm(f => ({ ...f, fecha: defaultDate }))
