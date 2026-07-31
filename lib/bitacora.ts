@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client'
 import prisma from './prisma'
 
 interface LogParams {
@@ -19,8 +18,10 @@ export async function logAccion(params: LogParams): Promise<void> {
         accion:        params.accion,
         tablaAfectada: params.tablaAfectada,
         registroId:    params.registroId ?? null,
-        valorAnterior: (params.valorAnterior ?? null) as Prisma.InputJsonValue | null,
-        valorNuevo:    (params.valorNuevo   ?? null) as Prisma.InputJsonValue | null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        valorAnterior: (params.valorAnterior ?? null) as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        valorNuevo:    (params.valorNuevo   ?? null) as any,
         ipAddress:     params.ipAddress ?? null,
       },
     })
