@@ -15,13 +15,13 @@ export async function logAccion(params: LogParams): Promise<void> {
   try {
     await prisma.bitacora.create({
       data: {
-        usuarioId: params.usuarioId,
-        accion: params.accion,
+        usuarioId:     params.usuarioId,
+        accion:        params.accion,
         tablaAfectada: params.tablaAfectada,
-        registroId: params.registroId ?? null,
-        valorAnterior: params.valorAnterior ?? Prisma.JsonNull,
-        valorNuevo: params.valorNuevo ?? Prisma.JsonNull,
-        ipAddress: params.ipAddress ?? null,
+        registroId:    params.registroId ?? null,
+        valorAnterior: (params.valorAnterior ?? null) as Prisma.InputJsonValue | null,
+        valorNuevo:    (params.valorNuevo   ?? null) as Prisma.InputJsonValue | null,
+        ipAddress:     params.ipAddress ?? null,
       },
     })
   } catch (e) {
