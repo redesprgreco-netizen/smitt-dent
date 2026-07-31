@@ -1,21 +1,23 @@
 // lib/supabase-admin.ts
-// Cliente de Supabase para uso EXCLUSIVO en el servidor (API routes).
-// Usa la service role key, que puede leer/escribir en Storage sin restricciones de RLS.
+// Cliente Supabase para uso EXCLUSIVO en el servidor (API routes).
+// Usa la service role key para acceder a Storage sin restricciones de RLS.
 // NUNCA importar este archivo en un componente 'use client'.
 import { createClient } from '@supabase/supabase-js'
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 
-if (!url || !serviceKey) {
-  throw new Error(
-    'Faltan variables de entorno: NEXT_PUBLIC_SUPABASE_URL y/o SUPABASE_SERVICE_ROLE_KEY'
-  )
-}
-
-export const supabaseAdmin = createClient(url, serviceKey, {
-  auth: { persistSession: false },
-})
+// No lanzamos error en build time — solo en runtime si falta la config.
+// Esto evita que el build de Vercel falle por variables no configuradas aún.
+export const supabaseAdmin = createClient(
+  url || 'https://placeholder.supabase.co',
+  serviceKey || 'placeholder',
+  { auth: { persistSession: false } }
+)
 
 export const BUCKET_CONTRATOS = 'contratos'
 export const BUCKET_FIRMAS = 'firmas'
+
+export function supabaseConfigured(): boolean {
+  return Boolean(url && serviceKey && !url.includes('placeholder'))
+}

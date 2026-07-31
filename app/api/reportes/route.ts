@@ -1,3 +1,4 @@
+// app/api/reportes/route.ts
 import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth, ok, badRequest, serverError } from '@/lib/api'

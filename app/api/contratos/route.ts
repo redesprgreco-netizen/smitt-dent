@@ -2,10 +2,9 @@
 import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth, ok, badRequest, serverError } from '@/lib/api'
-import { supabaseAdmin, BUCKET_CONTRATOS } from '@/lib/supabase-admin'
+import { supabaseAdmin, BUCKET_CONTRATOS, supabaseConfigured } from '@/lib/supabase-admin'
 import { logAccion, getIp } from '@/lib/bitacora'
 
-// Devuelve el contrato activo (si existe)
 export async function GET() {
   const auth = await requireAuth(['admin'])
   if ('status' in auth) return auth
@@ -17,11 +16,16 @@ export async function GET() {
   return ok(contrato)
 }
 
-// Sube un nuevo PDF y lo marca como el contrato activo (desactiva el anterior)
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(['admin'])
   if ('status' in auth) return auth
   const { session } = auth
+
+  if (!supabaseConfigured()) {
+    return badRequest(
+      'Supabase Storage no está configurado. Agrega NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en las variables de entorno de Vercel.'
+    )
+  }
 
   try {
     const formData = await req.formData()
@@ -40,7 +44,6 @@ export async function POST(req: NextRequest) {
 
     if (uploadError) return badRequest(`Error al subir el PDF: ${uploadError.message}`)
 
-    // Desactiva el contrato anterior (si había uno) y crea el nuevo activo
     await prisma.contrato.updateMany({ where: { activo: true }, data: { activo: false } })
 
     const contrato = await prisma.contrato.create({
