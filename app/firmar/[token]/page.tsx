@@ -22,6 +22,7 @@ export default function FirmarPage() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dibujando = useRef(false)
+  const ultimoPos = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     fetch(`/api/firmar/${token}`)
@@ -38,8 +39,8 @@ export default function FirmarPage() {
       .finally(() => setLoading(false))
   }, [token])
 
-  // Ajusta el tamaño real del canvas a su tamaño mostrado (para que la firma no se vea distorsionada)
-  useEffect(() => {
+  // Ajusta el canvas al tamaño real del dispositivo (crucial para táctil)
+  const initCanvas = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ratio = window.devicePixelRatio || 1
@@ -49,42 +50,74 @@ export default function FirmarPage() {
     const ctx = canvas.getContext('2d')
     if (ctx) {
       ctx.scale(ratio, ratio)
-      ctx.lineWidth = 2.5
+      ctx.lineWidth = 3
       ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
       ctx.strokeStyle = '#0d2b55'
     }
-  }, [info])
+  }, [])
+
+  useEffect(() => {
+    if (info) {
+      // Pequeño delay para que el DOM esté listo
+      setTimeout(initCanvas, 100)
+    }
+  }, [info, acepto, initCanvas])
 
   function getPos(e: React.PointerEvent<HTMLCanvasElement>) {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const canvas = canvasRef.current!
+    const rect = canvas.getBoundingClientRect()
+    const ratio = window.devicePixelRatio || 1
+    return {
+      x: (e.clientX - rect.left),
+      y: (e.clientY - rect.top),
+    }
   }
 
   function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    e.preventDefault()
+    // Capturar el pointer para que funcione aunque el dedo salga del canvas brevemente
+    canvasRef.current?.setPointerCapture(e.pointerId)
     dibujando.current = true
+    const pos = getPos(e)
+    ultimoPos.current = pos
     const ctx = canvasRef.current?.getContext('2d')
-    const { x, y } = getPos(e)
-    ctx?.beginPath()
-    ctx?.moveTo(x, y)
+    if (ctx) {
+      ctx.beginPath()
+      ctx.moveTo(pos.x, pos.y)
+      // Punto inicial (para trazos cortos / puntos)
+      ctx.arc(pos.x, pos.y, 1.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 
   function draw(e: React.PointerEvent<HTMLCanvasElement>) {
+    e.preventDefault()
     if (!dibujando.current) return
     const ctx = canvasRef.current?.getContext('2d')
-    const { x, y } = getPos(e)
-    ctx?.lineTo(x, y)
-    ctx?.stroke()
+    if (!ctx) return
+    const pos = getPos(e)
+    ctx.beginPath()
+    ctx.moveTo(ultimoPos.current?.x ?? pos.x, ultimoPos.current?.y ?? pos.y)
+    ctx.lineTo(pos.x, pos.y)
+    ctx.stroke()
+    ultimoPos.current = pos
     setTieneTrazo(true)
   }
 
-  function endDraw() {
+  function endDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    e.preventDefault()
     dibujando.current = false
+    ultimoPos.current = null
   }
 
   function limpiarFirma() {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
-    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if (canvas && ctx) {
+      const ratio = window.devicePixelRatio || 1
+      ctx.clearRect(0, 0, canvas.width / ratio, canvas.height / ratio)
+    }
     setTieneTrazo(false)
   }
 
@@ -109,15 +142,13 @@ export default function FirmarPage() {
     }
   }, [acepto, tieneTrazo, token])
 
-  if (loading) {
-    return <Centrado><p>Cargando documento...</p></Centrado>
-  }
+  if (loading) return <Centrado><p style={{ fontSize: 15 }}>Cargando documento...</p></Centrado>
 
   if (error) {
     return (
       <Centrado>
-        <i className="ti ti-alert-triangle" style={{ fontSize: 40, color: '#c0392b' }} />
-        <p style={{ marginTop: 10, fontSize: 15 }}>{error}</p>
+        <i className="ti ti-alert-triangle" style={{ fontSize: 48, color: '#c0392b' }} />
+        <p style={{ marginTop: 12, fontSize: 15, color: '#c0392b' }}>{error}</p>
       </Centrado>
     )
   }
@@ -125,51 +156,114 @@ export default function FirmarPage() {
   if (firmado) {
     return (
       <Centrado>
-        <i className="ti ti-circle-check" style={{ fontSize: 48, color: '#1a9e5c' }} />
-        <h2 style={{ marginTop: 14, fontSize: 19, fontFamily: 'Sora' }}>¡Documento firmado!</h2>
-        <p style={{ marginTop: 6, fontSize: 14, color: '#666' }}>Gracias, {info?.clienteNombre}. Ya puedes cerrar esta ventana.</p>
+        <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#e8f8ee', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+          <i className="ti ti-circle-check" style={{ fontSize: 40, color: '#1a9e5c' }} />
+        </div>
+        <h2 style={{ fontSize: 20, fontFamily: 'Sora', fontWeight: 700 }}>¡Documento firmado!</h2>
+        <p style={{ marginTop: 8, fontSize: 14, color: '#666', maxWidth: 300, textAlign: 'center' }}>
+          Gracias, {info?.clienteNombre}. Tu firma ha sido registrada. Ya puedes cerrar esta ventana.
+        </p>
       </Centrado>
     )
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 60px' }}>
-      <h1 style={{ fontFamily: 'Sora', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{info?.contratoNombre}</h1>
-      <p style={{ fontSize: 13.5, color: '#666', marginBottom: 18 }}>
-        Hola {info?.clienteNombre}, por favor lee el documento completo antes de firmar.
-      </p>
-
-      <div style={{ border: '1px solid #ddd', borderRadius: 10, overflow: 'hidden', marginBottom: 18, height: '60vh' }}>
-        <iframe src={info?.pdfUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Contrato" />
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 16px 80px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontFamily: 'Sora', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+          {info?.contratoNombre}
+        </h1>
+        <p style={{ fontSize: 14, color: '#666' }}>
+          Hola <strong>{info?.clienteNombre}</strong>, por favor lee el documento antes de firmar.
+        </p>
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 18, cursor: 'pointer' }}>
-        <input type="checkbox" checked={acepto} onChange={e => setAcepto(e.target.checked)} style={{ width: 18, height: 18 }} />
-        He leído y acepto el contenido de este documento
+      {/* PDF */}
+      <div style={{ border: '1px solid #dce5f0', borderRadius: 12, overflow: 'hidden', marginBottom: 20, height: '58vh', background: '#f5f5f5' }}>
+        <iframe
+          src={info?.pdfUrl}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          title="Contrato"
+        />
+      </div>
+
+      {/* Checkbox aceptar */}
+      <label style={{
+        display: 'flex', alignItems: 'flex-start', gap: 12, fontSize: 14,
+        marginBottom: 20, cursor: 'pointer', lineHeight: 1.5,
+        background: acepto ? '#e8f8ee' : '#f8f9fc',
+        border: `1.5px solid ${acepto ? '#1a9e5c' : '#dce5f0'}`,
+        borderRadius: 10, padding: '12px 14px',
+      }}>
+        <input
+          type="checkbox"
+          checked={acepto}
+          onChange={e => setAcepto(e.target.checked)}
+          style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, cursor: 'pointer' }}
+        />
+        <span>He leído y acepto el contenido de este documento en su totalidad.</span>
       </label>
 
+      {/* Canvas de firma */}
       {acepto && (
         <div>
-          <p style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 8 }}>Firma aquí con tu dedo:</p>
-          <canvas
-            ref={canvasRef}
-            style={{ width: '100%', height: 180, background: '#fafafa', border: '2px dashed #ccc', borderRadius: 10, touchAction: 'none' }}
-            onPointerDown={startDraw}
-            onPointerMove={draw}
-            onPointerUp={endDraw}
-            onPointerLeave={endDraw}
-          />
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <button className="btn btn-secondary" onClick={limpiarFirma} style={{ flex: 1 }}>
-              <i className="ti ti-eraser" /> Borrar
+          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#0d2b55' }}>
+            ✍️ Firma aquí abajo con tu dedo:
+          </p>
+          <p style={{ fontSize: 12, color: '#999', marginBottom: 10 }}>
+            Traza tu firma en el recuadro. Si no te queda bien, usa el botón Borrar.
+          </p>
+
+          <div style={{ position: 'relative' }}>
+            <canvas
+              ref={canvasRef}
+              style={{
+                width: '100%',
+                height: 200,
+                background: '#fff',
+                border: '2px dashed #2272d4',
+                borderRadius: 12,
+                touchAction: 'none',
+                cursor: 'crosshair',
+                display: 'block',
+              }}
+              onPointerDown={startDraw}
+              onPointerMove={draw}
+              onPointerUp={endDraw}
+              onPointerCancel={endDraw}
+            />
+            {!tieneTrazo && (
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none',
+              }}>
+                <span style={{ fontSize: 13, color: '#b0bfd8' }}>← Traza tu firma aquí →</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            <button
+              onClick={limpiarFirma}
+              style={{
+                flex: 1, padding: '12px', borderRadius: 10, border: '1.5px solid #dce5f0',
+                background: '#fff', fontSize: 14, cursor: 'pointer', fontWeight: 500,
+              }}
+            >
+              <i className="ti ti-eraser" style={{ marginRight: 6 }} />Borrar
             </button>
             <button
-              className="btn btn-primary"
               onClick={enviarFirma}
               disabled={!tieneTrazo || enviando}
-              style={{ flex: 2 }}
+              style={{
+                flex: 2, padding: '12px', borderRadius: 10, border: 'none',
+                background: tieneTrazo ? '#1a9e5c' : '#ccc',
+                color: '#fff', fontSize: 14, fontWeight: 600, cursor: tieneTrazo ? 'pointer' : 'not-allowed',
+              }}
             >
-              {enviando ? 'Enviando...' : 'Confirmar firma'}
+              {enviando ? 'Enviando...' : '✓ Confirmar y firmar'}
             </button>
           </div>
         </div>
@@ -180,7 +274,11 @@ export default function FirmarPage() {
 
 function Centrado({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24 }}>
+    <div style={{
+      minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      textAlign: 'center', padding: 24,
+    }}>
       {children}
     </div>
   )
