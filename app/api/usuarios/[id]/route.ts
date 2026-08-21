@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth, ok, badRequest, notFound, serverError } from '@/lib/api'
 import { logAccion, getIp } from '@/lib/bitacora'
+import { hashPassword } from '@/lib/auth'
 
 type Params = { params: { id: string } }
 
@@ -32,7 +33,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!user) return notFound('Usuario no encontrado')
 
   try {
-    const { rol, colorAgenda, estado } = await req.json()
+    const { rol, colorAgenda, estado, password } = await req.json()
+
+    if (password !== undefined) {
+      if (typeof password !== 'string' || password.length < 8) {
+        return badRequest('La contraseña debe tener al menos 8 caracteres')
+      }
+    }
 
     const updated = await prisma.usuario.update({
       where: { id },
@@ -40,6 +47,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(rol        && { rol }),
         ...(colorAgenda !== undefined && { colorAgenda: colorAgenda || null }),
         ...(estado     && { estado }),
+        ...(password   && { passwordHash: await hashPassword(password) }),
         // Al aprobar, registrar quién aprobó
         ...(estado === 'activo' && user.estado === 'pendiente' && { aprobadoPor: session.sub }),
       },
@@ -47,20 +55,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     })
 
     // Bitácora
-    const accion = estado === 'activo' && user.estado === 'pendiente'
+    const accion = password
+      ? 'restablecer_password'
+      : estado === 'activo' && user.estado === 'pendiente'
       ? 'aprobar_usuario'
       : estado === 'inactivo' ? 'desactivar_usuario'
       : estado === 'activo' && user.estado === 'inactivo' ? 'reactivar_usuario'
       : rol ? 'editar_rol_usuario'
       : 'editar_usuario'
 
+    // Nunca se registra la contraseña (ni en texto plano ni el hash) en la bitácora.
     await logAccion({
       usuarioId: session.sub,
       accion,
       tablaAfectada: 'usuarios',
       registroId: id,
-      valorAnterior: { rol: user.rol, estado: user.estado, colorAgenda: user.colorAgenda },
-      valorNuevo: { rol: updated.rol, estado: updated.estado, colorAgenda: updated.colorAgenda },
+      valorAnterior: password ? null : { rol: user.rol, estado: user.estado, colorAgenda: user.colorAgenda },
+      valorNuevo: password ? { correo: user.correo } : { rol: updated.rol, estado: updated.estado, colorAgenda: updated.colorAgenda },
       ipAddress: getIp(req),
     })
 

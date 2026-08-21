@@ -46,6 +46,28 @@ export default function UsuariosPage() {
   const activos = usuarios.filter(u => u.estado === 'activo')
   const inactivos = usuarios.filter(u => u.estado === 'inactivo')
 
+  async function resetPassword(id: number, nombreCompleto: string) {
+    const nueva = window.prompt(
+      `Nueva contraseña para ${nombreCompleto} (mínimo 8 caracteres):`
+    )
+    if (nueva === null) return // canceló
+    if (nueva.length < 8) {
+      alert('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+    const res = await fetch(`/api/usuarios/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: nueva }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      alert(`Contraseña de ${nombreCompleto} actualizada correctamente.`)
+    } else {
+      alert(data.error ?? 'No se pudo restablecer la contraseña')
+    }
+  }
+
   async function deleteUsuario(id: number, nombreCompleto: string) {
     if (!confirm(`¿Eliminar permanentemente a ${nombreCompleto}? Esta acción no se puede deshacer.`)) return
     const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' })
@@ -180,6 +202,15 @@ export default function UsuariosPage() {
                             <i className="ti ti-trash" /> Eliminar
                           </button>
                         </>
+                      )}
+                      {(u.estado === 'activo' || u.estado === 'inactivo') && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          title="Restablecer contraseña"
+                          onClick={() => resetPassword(u.id, `${u.nombre} ${u.apellido}`)}
+                        >
+                          <i className="ti ti-key" /> Contraseña
+                        </button>
                       )}
                       <button className="btn btn-secondary btn-sm" onClick={() => setEditingId(editingId === u.id ? null : u.id)}>
                         <i className="ti ti-edit" />
