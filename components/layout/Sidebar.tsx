@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSparkle } from './SparkleEffect'
 
 interface SidebarProps {
   rol: string
@@ -20,10 +21,14 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ rol, open, onNavigate }: SidebarProps) {
   const pathname = usePathname()
+  const sparkle = useSparkle()
   let lastSection = ''
 
   return (
-    <nav className={`layout-sidebar${open ? ' open' : ''}`}>
+    <nav
+      className={`layout-sidebar${open ? ' open' : ''}`}
+      onClickCapture={(e) => sparkle(e.clientX, e.clientY)}
+    >
       <div style={{ flex: 1 }}>
         {NAV_ITEMS.filter(item => !item.adminOnly || rol === 'admin').map(item => {
           const showSection = item.section && item.section !== lastSection

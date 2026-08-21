@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Topbar from './Topbar'
 import Sidebar from './Sidebar'
+import { SparkleProvider } from './SparkleEffect'
 
 interface AppShellProps {
   nombre: string
@@ -21,15 +22,17 @@ export default function AppShell({ nombre, apellido, rol, children }: AppShellPr
   }, [pathname])
 
   return (
-    <>
+    <SparkleProvider>
       <Topbar nombre={nombre} apellido={apellido} rol={rol} onMenuClick={() => setSidebarOpen(o => !o)} />
       <Sidebar rol={rol} open={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
       {sidebarOpen && (
         <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
       <main className="layout-main">
-        {children}
+        <div key={pathname} className="page-fade-in">
+          {children}
+        </div>
       </main>
-    </>
+    </SparkleProvider>
   )
 }

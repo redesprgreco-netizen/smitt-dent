@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useSparkle } from './SparkleEffect'
 
 interface TopbarProps {
   nombre: string
@@ -12,6 +13,7 @@ interface TopbarProps {
 export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarProps) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
+  const sparkle = useSparkle()
   const initials = `${nombre[0]}${apellido[0]}`.toUpperCase()
 
   async function handleLogout() {
@@ -20,7 +22,7 @@ export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarPro
   }
 
   return (
-    <header className="layout-topbar">
+    <header className="layout-topbar" onClickCapture={(e) => sparkle(e.clientX, e.clientY)}>
       {/* Botón menú (solo móvil) */}
       <button
         onClick={onMenuClick}
@@ -35,12 +37,12 @@ export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarPro
       </button>
 
       {/* Logo */}
-      <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-        <div style={{
+      <a href="/dashboard" className="topbar-logo-link" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <div className="topbar-logo-badge" style={{
           width: 36, height: 36, background: 'var(--teal)', borderRadius: 9,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <i className="ti ti-tooth" style={{ fontSize: 20, color: '#fff' }} />
+          <i className="ti ti-tooth topbar-logo-icon" style={{ fontSize: 20, color: '#fff' }} />
         </div>
         <span style={{ fontFamily: 'Sora', fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>
           Smitt<span style={{ color: 'var(--teal)' }}>Dent</span>
@@ -49,12 +51,13 @@ export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarPro
 
       {/* Right side */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16, position: 'relative' }}>
-        <i className="ti ti-bell" style={{ fontSize: 20, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }} />
+        <i className="ti ti-bell topbar-bell" style={{ fontSize: 20, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }} />
 
         {/* Avatar + menu */}
         <div style={{ position: 'relative' }}>
           <div
             onClick={() => setMenuOpen(o => !o)}
+            className="topbar-avatar"
             style={{
               width: 34, height: 34, borderRadius: '50%', background: 'var(--blue-accent)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -69,7 +72,7 @@ export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarPro
             <>
               {/* Backdrop */}
               <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setMenuOpen(false)} />
-              <div style={{
+              <div className="topbar-dropdown" style={{
                 position: 'absolute', top: 42, right: 0, zIndex: 300,
                 background: '#fff', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
                 border: '1px solid var(--border)', padding: '8px 0', minWidth: 200,
