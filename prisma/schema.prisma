@@ -69,6 +69,9 @@ enum EstadoSaludGeneral {
   regular
   malo
 
+  // El tipo en la base de datos (creado en supabase/migrations/002_ficha_clinica.sql)
+  // se llama "estado_salud_general" en minúsculas. Sin este @@map, Prisma busca un tipo
+  // llamado exactamente "EstadoSaludGeneral" y falla con "type ... does not exist".
   @@map("estado_salud_general")
 }
 
@@ -77,6 +80,10 @@ enum Sexo {
   femenino
   otro
 
+  // Mismo caso: el tipo real en la base de datos se llama "sexo" (ver
+  // supabase/migrations/002_ficha_clinica.sql). Este @@map hace que Prisma use ese
+  // nombre real en vez de buscar un tipo llamado "Sexo", que es justo lo que causaba
+  // el error "type public.Sexo does not exist" al guardar la Parte I del expediente.
   @@map("sexo")
 }
 

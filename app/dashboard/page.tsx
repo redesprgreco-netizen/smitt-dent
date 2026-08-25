@@ -82,7 +82,7 @@ export default async function DashboardPage() {
         <div>
           <h1 style={{ fontFamily: 'Sora', fontSize: 22, fontWeight: 700 }}>Panel Principal</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
-            {new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Mexico_City' })}
+            {new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
         {session?.rol === 'admin' && pendientesAprobacion > 0 && (
