@@ -5,6 +5,9 @@ import type { Expediente, AntecedentesPatologicos, ConsentimientoInformado, Sexo
 interface Props {
   expediente: Expediente & { antecedentes?: AntecedentesPatologicos | null; consentimiento?: ConsentimientoInformado | null }
   onUpdated: () => void
+  // Permite saltar directamente a la pestaña "Contratos" del expediente (ver sección de
+  // Consentimiento informado más abajo, donde anidamos el estado de la firma electrónica).
+  onGoToContratos?: () => void
 }
 
 type SubTab = 'identificacion' | 'antecedentes' | 'consentimiento'
@@ -75,7 +78,7 @@ const DEFAULT_ANTECEDENTES: Partial<AntecedentesPatologicos> = {
   alcoholismo: false, alcoholCantSemana: '', alcoholAnios: null,
 }
 
-export default function FichaClinica({ expediente, onUpdated }: Props) {
+export default function FichaClinica({ expediente, onUpdated, onGoToContratos }: Props) {
   const [sub, setSub] = useState<SubTab>('identificacion')
 
   // ── Identificación ──
@@ -102,8 +105,17 @@ export default function FichaClinica({ expediente, onUpdated }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...idForm, sexo: idForm.sexo || null }),
       })
-      if (res.ok) { setIdMsg('Guardado'); onUpdated() } else setIdMsg('Error al guardar')
-    } finally { setSavingId(false); setTimeout(() => setIdMsg(''), 2500) }
+      const data = await res.json().catch(() => null)
+      if (res.ok) {
+        setIdMsg('Guardado'); onUpdated()
+      } else {
+        // Mostramos el motivo real que regresa el servidor en vez de un mensaje genérico,
+        // para poder ver de inmediato por qué falló (ej. un campo demasiado largo, etc.)
+        setIdMsg(data?.error ? `Error al guardar: ${data.error}` : 'Error al guardar')
+      }
+    } catch {
+      setIdMsg('Error de conexión al guardar')
+    } finally { setSavingId(false); setTimeout(() => setIdMsg(''), 5000) }
   }
 
   // ── Antecedentes patológicos ──
@@ -148,6 +160,53 @@ export default function FichaClinica({ expediente, onUpdated }: Props) {
   })
   const [savingCons, setSavingCons] = useState(false)
   const [consMsg, setConsMsg] = useState('')
+
+  // ── Contrato de consentimiento (firma electrónica) ──
+  // Anidamos aquí el estado de los contratos de tipo "consentimiento" generados en la
+  // pestaña Contratos, para no duplicar la gestión del documento en dos lugares distintos.
+  interface FirmaResumen { id: number; estado: string; firmadoEn: string | null; contrato: { nombre: string } }
+  const [firmasConsentimiento, setFirmasConsentimiento] = useState<FirmaResumen[]>([])
+  const [firmasDisponibles, setFirmasDisponibles] = useState(true) // false si el usuario no tiene permiso (403)
+  const [loadingFirmas, setLoadingFirmas] = useState(false)
+  const [generandoLink, setGenerandoLink] = useState(false)
+  const [linkGenerado, setLinkGenerado] = useState<string | null>(null)
+
+  const loadFirmasConsentimiento = useCallback(async () => {
+    setLoadingFirmas(true)
+    try {
+      const res = await fetch(`/api/firmas?expedienteId=${expediente.id}`)
+      if (res.status === 403) { setFirmasDisponibles(false); return }
+      const data = await res.json()
+      if (data.ok) {
+        setFirmasDisponibles(true)
+        setFirmasConsentimiento(
+          data.data.filter((f: FirmaResumen) => f.contrato?.nombre?.toLowerCase().includes('consentimiento'))
+        )
+      }
+    } finally {
+      setLoadingFirmas(false)
+    }
+  }, [expediente.id])
+
+  useEffect(() => {
+    if (sub === 'consentimiento') loadFirmasConsentimiento()
+  }, [sub, loadFirmasConsentimiento])
+
+  async function generarLinkConsentimiento() {
+    setGenerandoLink(true)
+    try {
+      const res = await fetch('/api/firmas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clienteNombre: `${expediente.nombre} ${expediente.apellido}`, expedienteId: expediente.id }),
+      })
+      const data = await res.json()
+      if (res.ok) { setLinkGenerado(data.data.link); loadFirmasConsentimiento() }
+      else alert(data.error ?? 'No se pudo generar el enlace')
+    } finally {
+      setGenerandoLink(false)
+    }
+  }
 
   async function guardarConsentimiento(aceptar: boolean) {
     setSavingCons(true); setConsMsg('')
@@ -204,12 +263,12 @@ export default function FichaClinica({ expediente, onUpdated }: Props) {
             </div>
             <div>
               <label className="form-label">Ocupación</label>
-              <input className="form-input" value={idForm.ocupacion}
+              <input className="form-input" maxLength={120} value={idForm.ocupacion}
                 onChange={e => setIdForm(f => ({ ...f, ocupacion: e.target.value }))} placeholder="Maestra, comerciante..." />
             </div>
             <div>
               <label className="form-label">Código Postal</label>
-              <input className="form-input" value={idForm.codigoPostal}
+              <input className="form-input" maxLength={10} value={idForm.codigoPostal}
                 onChange={e => setIdForm(f => ({ ...f, codigoPostal: e.target.value }))} placeholder="62000" />
             </div>
           </div>
@@ -217,12 +276,12 @@ export default function FichaClinica({ expediente, onUpdated }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label className="form-label">Domicilio</label>
-              <input className="form-input" value={idForm.domicilio}
+              <input className="form-input" maxLength={200} value={idForm.domicilio}
                 onChange={e => setIdForm(f => ({ ...f, domicilio: e.target.value }))} placeholder="Calle, número, colonia" />
             </div>
             <div>
               <label className="form-label">Ciudad</label>
-              <input className="form-input" value={idForm.ciudad}
+              <input className="form-input" maxLength={80} value={idForm.ciudad}
                 onChange={e => setIdForm(f => ({ ...f, ciudad: e.target.value }))} placeholder="Cuernavaca" />
             </div>
           </div>
@@ -233,12 +292,12 @@ export default function FichaClinica({ expediente, onUpdated }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label className="form-label">Nombre</label>
-              <input className="form-input" value={idForm.contactoEmergenciaNombre}
+              <input className="form-input" maxLength={120} value={idForm.contactoEmergenciaNombre}
                 onChange={e => setIdForm(f => ({ ...f, contactoEmergenciaNombre: e.target.value }))} />
             </div>
             <div>
               <label className="form-label">Teléfono</label>
-              <input className="form-input" value={idForm.contactoEmergenciaTelefono}
+              <input className="form-input" maxLength={20} value={idForm.contactoEmergenciaTelefono}
                 onChange={e => setIdForm(f => ({ ...f, contactoEmergenciaTelefono: e.target.value }))} />
             </div>
           </div>
@@ -249,12 +308,12 @@ export default function FichaClinica({ expediente, onUpdated }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 16 }}>
             <div>
               <label className="form-label">¿Cuál es su nombre?</label>
-              <input className="form-input" value={idForm.llenadoPorNombre}
+              <input className="form-input" maxLength={120} value={idForm.llenadoPorNombre}
                 onChange={e => setIdForm(f => ({ ...f, llenadoPorNombre: e.target.value }))} />
             </div>
             <div>
               <label className="form-label">Parentesco con el paciente</label>
-              <input className="form-input" value={idForm.llenadoPorParentesco}
+              <input className="form-input" maxLength={60} value={idForm.llenadoPorParentesco}
                 onChange={e => setIdForm(f => ({ ...f, llenadoPorParentesco: e.target.value }))} />
             </div>
           </div>
@@ -263,7 +322,7 @@ export default function FichaClinica({ expediente, onUpdated }: Props) {
             <button type="submit" className="btn btn-primary btn-sm" disabled={savingId}>
               <i className="ti ti-device-floppy" /> {savingId ? 'Guardando...' : 'Guardar identificación'}
             </button>
-            {idMsg && <span style={{ fontSize: 12.5, color: idMsg === 'Guardado' ? '#1a9e5c' : '#c0392b' }}>{idMsg}</span>}
+            {idMsg && <span style={{ fontSize: 12.5, color: idMsg.startsWith('Error') ? '#c0392b' : '#1a9e5c' }}>{idMsg}</span>}
           </div>
         </form>
       )}
@@ -432,6 +491,62 @@ export default function FichaClinica({ expediente, onUpdated }: Props) {
                 <i className="ti ti-alert-circle" style={{ marginRight: 6 }} />
                 Este expediente aún no cuenta con consentimiento informado firmado
               </p>
+            </div>
+          )}
+
+          {/* Contrato de consentimiento (firma electrónica) — anidado desde la pestaña Contratos
+              para tener todo lo relacionado al consentimiento en un solo lugar. */}
+          {firmasDisponibles && (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', marginBottom: 20, background: '#f8faff' }}>
+              <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 10 }}>
+                <i className="ti ti-file-signature" style={{ marginRight: 6 }} />
+                Contrato de consentimiento (firma electrónica)
+              </p>
+
+              {loadingFirmas ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Cargando...</p>
+              ) : firmasConsentimiento.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  Aún no se ha generado un enlace de firma electrónica para el consentimiento de este paciente.
+                </p>
+              ) : (
+                <div style={{ marginBottom: 10 }}>
+                  {firmasConsentimiento.map(f => (
+                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+                      <span className={`pill ${f.estado === 'firmado' ? 'pill-green' : 'pill-amber'}`}>
+                        {f.estado === 'firmado' ? 'Firmado' : 'Pendiente'}
+                      </span>
+                      <span style={{ fontSize: 13 }}>{f.contrato.nombre}</span>
+                      {f.firmadoEn && (
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          — {new Date(f.firmadoEn).toLocaleDateString('es-MX', { dateStyle: 'medium' })}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={generarLinkConsentimiento} disabled={generandoLink}>
+                  <i className="ti ti-link" /> {generandoLink ? 'Generando...' : 'Generar enlace de firma'}
+                </button>
+                {onGoToContratos && (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={onGoToContratos}>
+                    <i className="ti ti-external-link" /> Ver en pestaña Contratos
+                  </button>
+                )}
+              </div>
+
+              {linkGenerado && (
+                <div style={{ marginTop: 12 }}>
+                  <code style={{ fontSize: 12, wordBreak: 'break-all', display: 'block', marginBottom: 8 }}>{linkGenerado}</code>
+                  <button type="button" className="btn btn-secondary btn-sm"
+                    onClick={() => { navigator.clipboard.writeText(linkGenerado); alert('Enlace copiado') }}>
+                    <i className="ti ti-copy" /> Copiar link
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

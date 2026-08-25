@@ -6,10 +6,15 @@ import Link from 'next/link'
 export default async function DashboardPage() {
   const session = await getSessionFromCookie()
 
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const manana = new Date(hoy)
-  manana.setDate(manana.getDate() + 1)
+  // Importante: las citas se guardan con `fecha` como medianoche UTC del día elegido
+  // (ver /api/citas → new Date('YYYY-MM-DD')). Si aquí calculamos "hoy" usando la hora
+  // LOCAL del servidor (setHours), en cuanto el servidor corra en una zona horaria
+  // distinta a UTC el rango del día queda desfasado y las citas de hoy no aparecen
+  // (por eso el dashboard llegaba a mostrar 0 citas aunque sí hubiera). Por eso el
+  // rango se arma en UTC, para que siempre coincida con cómo se guardó la fecha.
+  const ahora = new Date()
+  const hoy = new Date(Date.UTC(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()))
+  const manana = new Date(Date.UTC(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + 1))
 
   const [citasHoy, expedientesActivos, pagosMes, pendientesAprobacion] = await Promise.all([
     prisma.cita.count({
@@ -29,7 +34,7 @@ export default async function DashboardPage() {
       where: {
         estado: 'activo',
         createdAt: {
-          gte: new Date(hoy.getFullYear(), hoy.getMonth(), 1),
+          gte: new Date(Date.UTC(ahora.getFullYear(), ahora.getMonth(), 1)),
           lt: manana,
         },
       },

@@ -23,6 +23,7 @@ export default function AppointmentModal({
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [estadoActual, setEstadoActual] = useState(editingCita?.estado ?? 'pendiente')
 
   useEffect(() => {
     if (editingCita) {
@@ -35,6 +36,7 @@ export default function AppointmentModal({
         notas: editingCita.notas ?? '',
         doctoraId: editingCita.doctoraId ?? (currentUserRol === 'admin' ? (doctoras[0]?.id ?? currentUserId) : currentUserId),
       })
+      setEstadoActual(editingCita.estado)
     } else {
       setForm(f => ({ ...f, fecha: defaultDate }))
     }
@@ -77,6 +79,27 @@ export default function AppointmentModal({
       })
       onSaved()
       onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Cambia el estado de la cita (confirmar / marcar como atendida) sin cerrar el modal,
+  // para que se pueda seguir viendo/editando la cita después de marcarla.
+  async function handleSetEstado(estado: 'confirmada' | 'completada') {
+    if (!editingCita) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/citas/${editingCita.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'No se pudo actualizar la cita'); return }
+      setEstadoActual(estado)
+      onSaved()
     } finally {
       setLoading(false)
     }
@@ -162,14 +185,43 @@ export default function AppointmentModal({
             </div>
           )}
 
+          {editingCita && estadoActual !== 'cancelada' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              background: '#f8faff', border: '1px solid var(--border)', borderRadius: 8,
+              padding: '10px 12px', marginBottom: 14,
+            }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Estado de la cita:</span>
+              <span className={`pill ${
+                estadoActual === 'confirmada' ? 'pill-green'
+                : estadoActual === 'completada' ? 'pill-blue'
+                : 'pill-amber'
+              }`}>{estadoActual}</span>
+              <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                {estadoActual === 'pendiente' && (
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={loading}
+                    onClick={() => handleSetEstado('confirmada')}>
+                    <i className="ti ti-circle-check" /> Confirmar cita
+                  </button>
+                )}
+                {estadoActual !== 'completada' && (
+                  <button type="button" className="btn btn-primary btn-sm" disabled={loading}
+                    onClick={() => handleSetEstado('completada')}>
+                    <i className="ti ti-check" /> Paciente llegó / atendida
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20, flexWrap: 'wrap' }}>
-            {editingCita && editingCita.estado !== 'cancelada' && (
+            {editingCita && estadoActual !== 'cancelada' && (
               <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={loading} style={{ marginRight: 'auto' }}>
                 <i className="ti ti-calendar-cancel" /> Cancelar cita
               </button>
             )}
             {editingCita && (
-              <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={loading} style={editingCita.estado !== 'cancelada' ? {} : { marginRight: 'auto' }}>
+              <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={loading} style={estadoActual !== 'cancelada' ? {} : { marginRight: 'auto' }}>
                 <i className="ti ti-trash" /> Eliminar cita
               </button>
             )}

@@ -268,7 +268,7 @@ export default function ExpedienteDetallePage() {
       </div>
 
       {/* Tab: Ficha clínica */}
-      {tab === 'ficha' && <FichaClinica expediente={exp} onUpdated={load} />}
+      {tab === 'ficha' && <FichaClinica expediente={exp} onUpdated={load} onGoToContratos={() => setTab('contratos')} />}
 
       {/* Tab: Historial */}
       {tab === 'historial' && (

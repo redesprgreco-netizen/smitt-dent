@@ -1,16 +1,36 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import type { Pago } from '@/types'
+import type { Pago, PlanTratamiento } from '@/types'
+
+interface ExpedienteBusqueda {
+  id: number; folio: string; nombre: string; apellido: string
+}
+
+interface ExpedientePresupuesto {
+  id: number; folio: string; nombre: string; apellido: string
+  totalPresupuesto: number; totalPagado: number; saldoPendiente: number
+  planTratamiento: PlanTratamiento[]
+}
 
 export default function FacturacionPage() {
   const searchParams = useSearchParams()
+  const [vista, setVista] = useState<'pagos' | 'presupuestos'>('pagos')
   const [pagos, setPagos] = useState<Pago[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [session, setSession] = useState<{ id: number; rol: string } | null>(null)
+
+  // ── Presupuestos (anidado desde el expediente, para tenerlo a la mano en facturación) ──
+  const [busqueda, setBusqueda] = useState('')
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<ExpedienteBusqueda[]>([])
+  const [buscando, setBuscando] = useState(false)
+  const [expSeleccionado, setExpSeleccionado] = useState<ExpedientePresupuesto | null>(null)
+  const [cargandoExp, setCargandoExp] = useState(false)
+  const [nuevoPago, setNuevoPago] = useState({ monto: '', metodoPago: 'efectivo' as 'efectivo'|'transferencia'|'tarjeta', concepto: '' })
+  const [savingPago, setSavingPago] = useState(false)
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.ok) setSession({ id: d.data.id, rol: d.data.rol }) })
@@ -32,6 +52,57 @@ export default function FacturacionPage() {
   }, [page])
 
   useEffect(() => { load() }, [load])
+
+  // Buscar expedientes por nombre/folio para ver su presupuesto
+  useEffect(() => {
+    if (vista !== 'presupuestos' || !busqueda.trim()) { setResultadosBusqueda([]); return }
+    const t = setTimeout(async () => {
+      setBuscando(true)
+      try {
+        const res = await fetch(`/api/expedientes?q=${encodeURIComponent(busqueda.trim())}&pageSize=8`)
+        const data = await res.json()
+        if (data.ok) setResultadosBusqueda(data.data)
+      } finally {
+        setBuscando(false)
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [busqueda, vista])
+
+  const cargarPresupuesto = useCallback(async (expedienteId: number) => {
+    setCargandoExp(true)
+    setResultadosBusqueda([])
+    try {
+      const res = await fetch(`/api/expedientes/${expedienteId}`)
+      const data = await res.json()
+      if (data.ok) setExpSeleccionado(data.data)
+    } finally {
+      setCargandoExp(false)
+    }
+  }, [])
+
+  async function registrarPagoDesdeFacturacion(e: React.FormEvent) {
+    e.preventDefault()
+    if (!expSeleccionado) return
+    setSavingPago(true)
+    try {
+      const res = await fetch('/api/pagos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expedienteId: expSeleccionado.id, ...nuevoPago, monto: parseFloat(nuevoPago.monto) }),
+      })
+      if (res.ok) {
+        setNuevoPago({ monto: '', metodoPago: 'efectivo', concepto: '' })
+        cargarPresupuesto(expSeleccionado.id)
+        load()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Error al registrar pago')
+      }
+    } finally {
+      setSavingPago(false)
+    }
+  }
 
   const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n)
   const fmtFecha = (iso: string) => new Date(iso).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })
@@ -114,7 +185,17 @@ export default function FacturacionPage() {
         </div>
       </div>
 
-      {loading ? (
+      {/* Selector de vista — Pagos (recibos ya cobrados) / Presupuestos (plan de tratamiento) */}
+      <div className="tabs-bar" style={{ marginBottom: 20 }}>
+        <button className={`tab-btn${vista === 'pagos' ? ' active' : ''}`} onClick={() => setVista('pagos')}>
+          <i className="ti ti-cash" style={{ marginRight: 6 }} />Pagos
+        </button>
+        <button className={`tab-btn${vista === 'presupuestos' ? ' active' : ''}`} onClick={() => setVista('presupuestos')}>
+          <i className="ti ti-list-check" style={{ marginRight: 6 }} />Presupuestos
+        </button>
+      </div>
+
+      {vista === 'pagos' && (loading ? (
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Cargando...</p>
       ) : pagos.length === 0 ? (
         <div className="card" style={{ padding: 32, textAlign: 'center' }}>
@@ -183,9 +264,9 @@ export default function FacturacionPage() {
             </tbody>
           </table>
         </div>
-      )}
+      ))}
 
-      {totalPages > 1 && (
+      {vista === 'pagos' && totalPages > 1 && (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, alignItems: 'center' }}>
           <button className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
             <i className="ti ti-chevron-left" />
@@ -194,6 +275,146 @@ export default function FacturacionPage() {
           <button className="btn btn-secondary btn-sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
             <i className="ti ti-chevron-right" />
           </button>
+        </div>
+      )}
+
+      {/* ── Vista: Presupuestos (anidado desde el expediente para tenerlo más a la mano) ── */}
+      {vista === 'presupuestos' && (
+        <div>
+          <div className="card" style={{ padding: 20, marginBottom: 16 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Buscar paciente</p>
+            <div style={{ position: 'relative', maxWidth: 420 }}>
+              <input
+                className="form-input"
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Nombre, apellido o folio del expediente..."
+              />
+              {buscando && (
+                <span style={{ position: 'absolute', right: 12, top: 10, fontSize: 12, color: 'var(--text-muted)' }}>Buscando...</span>
+              )}
+              {resultadosBusqueda.length > 0 && (
+                <div className="card" style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+                  zIndex: 10, maxHeight: 260, overflowY: 'auto', padding: 4,
+                }}>
+                  {resultadosBusqueda.map(r => (
+                    <div key={r.id} onClick={() => { setBusqueda(''); cargarPresupuesto(r.id) }}
+                      style={{ padding: '8px 10px', cursor: 'pointer', borderRadius: 6, fontSize: 13.5, display: 'flex', justifyContent: 'space-between' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+                    >
+                      <span>{r.nombre} {r.apellido}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{r.folio}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {cargandoExp ? (
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Cargando presupuesto...</p>
+          ) : !expSeleccionado ? (
+            <div className="card" style={{ padding: 32, textAlign: 'center' }}>
+              <i className="ti ti-list-check" style={{ fontSize: 32, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }} />
+              <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>Busca un paciente arriba para ver su plan de tratamiento y saldo</p>
+            </div>
+          ) : (
+            <div>
+              <div className="card" style={{ padding: '16px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{expSeleccionado.nombre} {expSeleccionado.apellido}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{expSeleccionado.folio}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 14 }}>
+                  {[
+                    { label: 'Presupuesto', value: fmt(expSeleccionado.totalPresupuesto), color: 'var(--text-main)' },
+                    { label: 'Pagado', value: fmt(expSeleccionado.totalPagado), color: '#1a9e5c' },
+                    { label: 'Saldo', value: fmt(expSeleccionado.saldoPendiente), color: expSeleccionado.saldoPendiente > 0 ? '#c0392b' : '#1a9e5c' },
+                  ].map(s => (
+                    <div key={s.label} style={{ textAlign: 'center', background: 'var(--surface)', borderRadius: 10, padding: '8px 14px', minWidth: 90 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>{s.label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: s.color }}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {expSeleccionado.planTratamiento.length === 0 ? (
+                <div className="card" style={{ padding: 24, textAlign: 'center', marginBottom: 16 }}>
+                  <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>Este paciente aún no tiene ítems en su plan de tratamiento</p>
+                </div>
+              ) : (
+                <div className="card" style={{ overflow: 'hidden', marginBottom: 16 }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Concepto</th>
+                        <th>Piezas</th>
+                        <th>Cant.</th>
+                        <th>Precio unit.</th>
+                        <th>Desc. %</th>
+                        <th>Subtotal</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expSeleccionado.planTratamiento.map(pt => {
+                        const subtotalConDesc = Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100)
+                        return (
+                          <tr key={pt.id}>
+                            <td style={{ fontWeight: 500 }}>{pt.concepto}</td>
+                            <td style={{ color: 'var(--text-muted)' }}>{pt.piezas ?? '—'}</td>
+                            <td>{Number(pt.cantidad)}</td>
+                            <td>{fmt(Number(pt.precioUnitario))}</td>
+                            <td>{Number(pt.descuentoPct) > 0 ? `${pt.descuentoPct}%` : '—'}</td>
+                            <td style={{ fontWeight: 600 }}>{fmt(subtotalConDesc)}</td>
+                            <td>
+                              <span className={`pill ${pt.estado === 'realizado' ? 'pill-green' : pt.estado === 'en_curso' ? 'pill-blue' : 'pill-amber'}`}>
+                                {pt.estado}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="card" style={{ padding: 20 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Registrar pago</p>
+                <p style={{ fontSize: 13, color: '#1a9e5c', marginBottom: 12 }}>
+                  Saldo pendiente: <strong>{fmt(expSeleccionado.saldoPendiente)}</strong>
+                </p>
+                <form onSubmit={registrarPagoDesdeFacturacion}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 12, marginBottom: 12 }}>
+                    <div>
+                      <label className="form-label">Monto (MXN)</label>
+                      <input className="form-input" type="number" min="0.01" step="0.01" max={expSeleccionado.saldoPendiente} required
+                        value={nuevoPago.monto} onChange={e => setNuevoPago(f => ({ ...f, monto: e.target.value }))} placeholder="500.00" />
+                    </div>
+                    <div>
+                      <label className="form-label">Método</label>
+                      <select className="form-select" value={nuevoPago.metodoPago} onChange={e => setNuevoPago(f => ({ ...f, metodoPago: e.target.value as any }))}>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="tarjeta">Tarjeta</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Concepto</label>
+                      <input className="form-input" value={nuevoPago.concepto} onChange={e => setNuevoPago(f => ({ ...f, concepto: e.target.value }))} placeholder="Abono consulta..." />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={savingPago || expSeleccionado.saldoPendiente <= 0}>
+                    <i className="ti ti-cash" /> {savingPago ? 'Registrando...' : 'Registrar pago'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
