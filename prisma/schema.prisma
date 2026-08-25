@@ -68,12 +68,16 @@ enum EstadoSaludGeneral {
   bueno
   regular
   malo
+
+  @@map("estado_salud_general")
 }
 
 enum Sexo {
   masculino
   femenino
   otro
+
+  @@map("sexo")
 }
 
 // ==================== MODELOS ====================
