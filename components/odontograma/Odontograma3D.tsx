@@ -7,7 +7,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, RoundedBox, Text, Billboard, ContactShadows } from '@react-three/drei'
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import type { PiezaData } from './odontograma-data'
 import { ESTADO_COLOR, FDI_A_ALTERNA, claseDiente, SUPERFICIE_COLOR, type Clase } from './odontograma-data'
@@ -256,7 +255,7 @@ function Escena({ piezas, selected, onSelect, numeracion, cuadrantes }: Props) {
 
 export default function Odontograma3D({ piezas, selected, onSelect, numeracion, cuadrantes }: Props) {
   const [autoRotate, setAutoRotate] = useState(false)
-  const controlsRef = useRef<OrbitControlsImpl>(null)
+  const controlsRef = useRef<React.ElementRef<typeof OrbitControls>>(null)
 
   return (
     <div style={{ position: 'relative' }}>
