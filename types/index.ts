@@ -5,7 +5,11 @@ export type Rol = 'admin' | 'doctora' | 'visitante'
 export type EstadoUsuario = 'pendiente' | 'activo' | 'inactivo'
 export type EstadoCita = 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
 export type EstadoExpediente = 'activo' | 'inactivo'
-export type EstadoPieza = 'sin_tratamiento' | 'tratado' | 'pendiente' | 'extraccion'
+export type EstadoPieza =
+  | 'sin_tratamiento' | 'tratado' | 'pendiente' | 'extraccion'
+  | 'caries' | 'obturado' | 'corona' | 'endodoncia' | 'ausente' | 'implante' | 'sellante'
+export type SuperficieDental = 'oclusal' | 'mesial' | 'distal' | 'vestibular' | 'palatino'
+export type EstadoSuperficie = 'sano' | 'caries' | 'obturado'
 export type EstadoTratamiento = 'pendiente' | 'en_curso' | 'realizado'
 export type MetodoPago = 'efectivo' | 'transferencia' | 'tarjeta'
 export type EstadoPago = 'activo' | 'anulado'
@@ -166,8 +170,10 @@ export interface OdontogramaPieza {
   expedienteId: number
   numeroPieza: number
   estado: EstadoPieza
+  superficies?: Partial<Record<SuperficieDental, EstadoSuperficie>> | null
   notas: string | null
   updatedBy: number
+  updater?: Pick<Usuario, 'id' | 'nombre' | 'apellido'>
   updatedAt: string
 }
 

@@ -15,12 +15,16 @@ enum Rol {
   admin
   doctora
   visitante
+
+  @@map("rol")
 }
 
 enum EstadoUsuario {
   pendiente
   activo
   inactivo
+
+  @@map("estado_usuario")
 }
 
 enum EstadoCita {
@@ -28,40 +32,65 @@ enum EstadoCita {
   confirmada
   cancelada
   completada
+
+  @@map("estado_cita")
 }
 
 enum EstadoExpediente {
   activo
   inactivo
+
+  @@map("estado_expediente")
 }
 
+// Estados clínicos del odontograma.
+// Los 4 primeros ya existían (no se tocan ni su nombre ni su significado, para no
+// romper datos ya guardados). Los siguientes son nuevos, para un odontograma
+// odontológicamente completo (caries, restauraciones, coronas, endodoncias, etc.)
 enum EstadoPieza {
   sin_tratamiento
   tratado
   pendiente
   extraccion
+  caries
+  obturado
+  corona
+  endodoncia
+  ausente
+  implante
+  sellante
+
+  @@map("estado_pieza")
 }
 
 enum EstadoTratamiento {
   pendiente
   en_curso
   realizado
+
+  @@map("estado_tratamiento")
 }
 
 enum MetodoPago {
   efectivo
   transferencia
   tarjeta
+
+  @@map("metodo_pago")
 }
 
 enum EstadoPago {
   activo
   anulado
+
+  @@map("estado_pago")
 }
 
 enum TipoMovimiento {
   entrada
   salida
+
+  @@map("tipo_movimiento")
 }
 
 enum EstadoSaludGeneral {
@@ -69,9 +98,6 @@ enum EstadoSaludGeneral {
   regular
   malo
 
-  // El tipo en la base de datos (creado en supabase/migrations/002_ficha_clinica.sql)
-  // se llama "estado_salud_general" en minúsculas. Sin este @@map, Prisma busca un tipo
-  // llamado exactamente "EstadoSaludGeneral" y falla con "type ... does not exist".
   @@map("estado_salud_general")
 }
 
@@ -80,10 +106,6 @@ enum Sexo {
   femenino
   otro
 
-  // Mismo caso: el tipo real en la base de datos se llama "sexo" (ver
-  // supabase/migrations/002_ficha_clinica.sql). Este @@map hace que Prisma use ese
-  // nombre real en vez de buscar un tipo llamado "Sexo", que es justo lo que causaba
-  // el error "type public.Sexo does not exist" al guardar la Parte I del expediente.
   @@map("sexo")
 }
 
@@ -287,6 +309,9 @@ model OdontogramaPieza {
   expedienteId Int         @map("expediente_id")
   numeroPieza  Int         @map("numero_pieza") @db.SmallInt
   estado       EstadoPieza @default(sin_tratamiento)
+  // Hallazgos por cara del diente: { "oclusal": "caries", "mesial": "obturado", ... }
+  // Claves posibles: oclusal, mesial, distal, vestibular, palatino. Valores: sano | caries | obturado.
+  superficies  Json?       @map("superficies")
   notas        String?     @db.Text
   updatedBy    Int?        @map("updated_by")
   updatedAt    DateTime    @updatedAt @map("updated_at")

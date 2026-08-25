@@ -69,6 +69,19 @@ export default function FacturacionPage() {
     return () => clearTimeout(t)
   }, [busqueda, vista])
 
+  // Botón de lupa: permite explorar la lista de pacientes aunque el campo esté vacío
+  // (por si no se recuerda el nombre exacto). Reusa el mismo endpoint de búsqueda.
+  const explorarPacientes = useCallback(async () => {
+    setBuscando(true)
+    try {
+      const res = await fetch(`/api/expedientes?q=${encodeURIComponent(busqueda.trim())}&pageSize=20`)
+      const data = await res.json()
+      if (data.ok) setResultadosBusqueda(data.data)
+    } finally {
+      setBuscando(false)
+    }
+  }, [busqueda])
+
   const cargarPresupuesto = useCallback(async (expedienteId: number) => {
     setCargandoExp(true)
     setResultadosBusqueda([])
@@ -283,33 +296,44 @@ export default function FacturacionPage() {
         <div>
           <div className="card" style={{ padding: 20, marginBottom: 16 }}>
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Buscar paciente</p>
-            <div style={{ position: 'relative', maxWidth: 420 }}>
-              <input
-                className="form-input"
-                value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
-                placeholder="Nombre, apellido o folio del expediente..."
-              />
-              {buscando && (
-                <span style={{ position: 'absolute', right: 12, top: 10, fontSize: 12, color: 'var(--text-muted)' }}>Buscando...</span>
-              )}
-              {resultadosBusqueda.length > 0 && (
-                <div className="card" style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
-                  zIndex: 10, maxHeight: 260, overflowY: 'auto', padding: 4,
-                }}>
-                  {resultadosBusqueda.map(r => (
-                    <div key={r.id} onClick={() => { setBusqueda(''); cargarPresupuesto(r.id) }}
-                      style={{ padding: '8px 10px', cursor: 'pointer', borderRadius: 6, fontSize: 13.5, display: 'flex', justifyContent: 'space-between' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
-                    >
-                      <span>{r.nombre} {r.apellido}</span>
-                      <span style={{ color: 'var(--text-muted)' }}>{r.folio}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div style={{ display: 'flex', gap: 10, maxWidth: 420 }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  className="form-input"
+                  value={busqueda}
+                  onChange={e => setBusqueda(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') explorarPacientes() }}
+                  placeholder="Nombre, apellido o folio del expediente..."
+                />
+                {buscando && (
+                  <span style={{ position: 'absolute', right: 12, top: 10, fontSize: 12, color: 'var(--text-muted)' }}>Buscando...</span>
+                )}
+                {resultadosBusqueda.length > 0 && (
+                  <div className="card" style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+                    zIndex: 10, maxHeight: 260, overflowY: 'auto', padding: 4,
+                  }}>
+                    {resultadosBusqueda.map(r => (
+                      <div key={r.id} onClick={() => { setBusqueda(''); cargarPresupuesto(r.id) }}
+                        style={{ padding: '8px 10px', cursor: 'pointer', borderRadius: 6, fontSize: 13.5, display: 'flex', justifyContent: 'space-between' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+                      >
+                        <span>{r.nombre} {r.apellido}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{r.folio}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                title="Ver todos los pacientes"
+                onClick={explorarPacientes}
+              >
+                <i className="ti ti-search" />
+              </button>
             </div>
           </div>
 

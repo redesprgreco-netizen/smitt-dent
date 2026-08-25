@@ -295,11 +295,29 @@ export default function ExpedienteDetallePage() {
             </div>
           ) : exp.historial.map(nota => (
             <div key={nota.id} className="card" style={{ padding: '16px 20px', marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                 {nota.esCorreccion && <span className="pill pill-amber">Corrección</span>}
                 <span style={{ fontSize: 14, fontWeight: 600 }}>{nota.titulo}</span>
               </div>
-              <p style={{ fontSize: 13.5, whiteSpace: 'pre-wrap' }}>{nota.descripcion}</p>
+              <p style={{ fontSize: 13.5, whiteSpace: 'pre-wrap', marginBottom: 10 }}>{nota.descripcion}</p>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: 12,
+                color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 8,
+              }}>
+                <i className="ti ti-user-circle" style={{ fontSize: 14 }} />
+                <span>
+                  {nota.creador
+                    ? `${nota.creador.nombre} ${nota.creador.apellido}`
+                    : nota.creadoPorNombre ?? 'Usuario no disponible'}
+                </span>
+                <span style={{ margin: '0 2px' }}>·</span>
+                <i className="ti ti-clock" style={{ fontSize: 14 }} />
+                <span>
+                  {new Date(nota.createdAt).toLocaleString('es-MX', {
+                    dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Mexico_City',
+                  })}
+                </span>
+              </div>
             </div>
           ))}
         </div>
