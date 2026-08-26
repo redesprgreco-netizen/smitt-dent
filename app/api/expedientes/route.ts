@@ -1,96 +1,120 @@
-// app/api/expedientes/route.ts
+// app/api/expedientes/[id]/route.ts
 import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
-import { requireAuth, ok, created, badRequest, serverError, paginatedOk, parsePagination } from '@/lib/api'
+import { requireAuth, ok, badRequest, forbidden, notFound, serverError } from '@/lib/api'
 
-export const dynamic = 'force-dynamic'
+type Params = { params: { id: string } }
 
-export async function GET(req: NextRequest) {
-  const auth = await requireAuth()
-  if ('status' in auth) return auth
-  const { session } = auth
-
+export async function GET(_req: NextRequest, { params }: Params) {
   try {
-    const sp = req.nextUrl.searchParams
-    const { page, pageSize, skip } = parsePagination(sp)
-    const q = sp.get('q')?.trim()
+    const auth = await requireAuth()
+    if ('status' in auth) return auth
+    const { session } = auth
 
-    const where: Record<string, unknown> = {}
+    const id = parseInt(params.id)
+    const exp = await prisma.expediente.findUnique({
+      where: { id },
+      include: {
+        doctora:  { select: { id: true, nombre: true, apellido: true } },
+        historial: {
+          orderBy: { createdAt: 'desc' },
+          include: { creador: { select: { id: true, nombre: true, apellido: true, rol: true } } },
+        },
+        odontograma: { orderBy: { numeroPieza: 'asc' } },
+        planTratamiento: { orderBy: { createdAt: 'asc' } },
+        pagos: {
+          orderBy: { createdAt: 'desc' },
+          include: { creador: { select: { id: true, nombre: true, apellido: true } } },
+        },
+        antecedentes: true,
+        consentimiento: true,
+      },
+    })
+    if (!exp) return notFound('Expediente no encontrado')
 
     // Doctoras solo ven sus pacientes
-    if (session.rol !== 'admin') {
-      where.doctoraId = session.sub
-    }
+    if (session.rol !== 'admin' && exp.doctoraId !== session.sub)
+      return forbidden('No tienes acceso a este expediente')
 
-    if (q) {
-      where.OR = [
-        { nombre:   { contains: q, mode: 'insensitive' } },
-        { apellido: { contains: q, mode: 'insensitive' } },
-        { folio:    { contains: q, mode: 'insensitive' } },
-        { telefono: { contains: q, mode: 'insensitive' } },
-      ]
-    }
+    // Calcular saldo (respetando monto manual si existe)
+    const totalFromItems = exp.planTratamiento.reduce(
+      (acc, pt) => acc + Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100), 0
+    )
 
-    const [data, total] = await prisma.$transaction([
-      prisma.expediente.findMany({
-        where,
-        include: {
-          doctora: { select: { id: true, nombre: true, apellido: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: pageSize,
-      }),
-      prisma.expediente.count({ where }),
-    ])
+    const totalPresupuesto = exp.montoTotalManual 
+      ? Number(exp.montoTotalManual) 
+      : totalFromItems
 
-    return paginatedOk(data, total, page, pageSize)
+    const totalPagado = exp.pagos
+      .filter(p => p.estado === 'activo')
+      .reduce((acc, p) => acc + Number(p.monto), 0)
+
+    return ok({ 
+      ...exp, 
+      totalPresupuesto, 
+      totalPagado, 
+      saldoPendiente: totalPresupuesto - totalPagado 
+    })
   } catch (e) {
     return serverError(e)
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function PATCH(req: NextRequest, { params }: Params) {
   const auth = await requireAuth()
   if ('status' in auth) return auth
   const { session } = auth
 
+  const id = parseInt(params.id)
+  const exp = await prisma.expediente.findUnique({ where: { id } })
+  if (!exp) return notFound('Expediente no encontrado')
+
+  if (session.rol !== 'admin' && exp.doctoraId !== session.sub)
+    return forbidden('No tienes acceso a este expediente')
+
   try {
     const body = await req.json()
-    const { nombre, apellido, fechaNacimiento, telefono, correo, alergias, motivoInicial, doctoraId } = body
+    const {
+      nombre, apellido, fechaNacimiento, telefono, correo, alergias, motivoInicial, estado,
+      sexo, ocupacion, domicilio, ciudad, codigoPostal,
+      contactoEmergenciaNombre, contactoEmergenciaTelefono,
+      llenadoPorNombre, llenadoPorParentesco,
+      // Campos nuevos para plan de pagos
+      montoTotalManual,
+      numeroPagosPlan,
+    } = body
 
-    if (!nombre || !apellido) return badRequest('Nombre y apellido son requeridos')
+    // Solo admin puede cambiar estado
+    if (estado !== undefined && session.rol !== 'admin')
+      return forbidden('Solo la administradora puede cambiar el estado del expediente')
 
-    // Generar folio
-    const count = await prisma.expediente.count()
-    const folio = `EXP-${String(count + 1).padStart(4, '0')}`
-
-    const doctoraIdFinal = doctoraId ? parseInt(doctoraId) : session.sub
-    const doctora = await prisma.usuario.findUnique({
-      where: { id: doctoraIdFinal },
-      select: { nombre: true, apellido: true },
-    })
-
-    const expediente = await prisma.expediente.create({
+    const updated = await prisma.expediente.update({
+      where: { id },
       data: {
-        folio,
-        nombre: nombre.trim(),
-        apellido: apellido.trim(),
-        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
-        telefono: telefono?.trim() || null,
-        correo: correo?.toLowerCase().trim() || null,
-        alergias: alergias?.trim() || null,
-        motivoInicial: motivoInicial?.trim() || null,
-        doctoraId: doctoraIdFinal,
-        doctoraNombre: doctora ? `${doctora.nombre} ${doctora.apellido}` : null,
-        createdBy: session.sub,
-      },
-      include: {
-        doctora: { select: { id: true, nombre: true, apellido: true } },
+        ...(nombre           && { nombre: nombre.trim() }),
+        ...(apellido         && { apellido: apellido.trim() }),
+        ...(fechaNacimiento !== undefined && { fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null }),
+        ...(telefono  !== undefined && { telefono: telefono?.trim() || null }),
+        ...(correo    !== undefined && { correo: correo?.toLowerCase().trim() || null }),
+        ...(alergias  !== undefined && { alergias: alergias?.trim() || null }),
+        ...(motivoInicial !== undefined && { motivoInicial: motivoInicial?.trim() || null }),
+        ...(estado    !== undefined && { estado }),
+        ...(sexo !== undefined && { sexo: sexo || null }),
+        ...(ocupacion !== undefined && { ocupacion: ocupacion?.trim().slice(0, 120) || null }),
+        ...(domicilio !== undefined && { domicilio: domicilio?.trim().slice(0, 200) || null }),
+        ...(ciudad !== undefined && { ciudad: ciudad?.trim().slice(0, 80) || null }),
+        ...(codigoPostal !== undefined && { codigoPostal: codigoPostal?.trim().slice(0, 10) || null }),
+        ...(contactoEmergenciaNombre !== undefined && { contactoEmergenciaNombre: contactoEmergenciaNombre?.trim().slice(0, 120) || null }),
+        ...(contactoEmergenciaTelefono !== undefined && { contactoEmergenciaTelefono: contactoEmergenciaTelefono?.trim().slice(0, 20) || null }),
+        ...(llenadoPorNombre !== undefined && { llenadoPorNombre: llenadoPorNombre?.trim().slice(0, 120) || null }),
+        ...(llenadoPorParentesco !== undefined && { llenadoPorParentesco: llenadoPorParentesco?.trim().slice(0, 60) || null }),
+        
+        // Campos nuevos para plan de pagos
+        ...(montoTotalManual !== undefined && { montoTotalManual: montoTotalManual ? Number(montoTotalManual) : null }),
+        ...(numeroPagosPlan !== undefined && { numeroPagosPlan: numeroPagosPlan ? Number(numeroPagosPlan) : null }),
       },
     })
-
-    return created(expediente)
+    return ok(updated)
   } catch (e) {
     return serverError(e)
   }
