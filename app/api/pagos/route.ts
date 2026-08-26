@@ -21,19 +21,17 @@ export async function GET(req: NextRequest) {
       where.expediente = { doctoraId: session.sub }
     }
 
-    const [data, total] = await prisma.$transaction([
-      prisma.pago.findMany({
-        where,
-        include: {
-          expediente: { select: { id: true, folio: true, nombre: true, apellido: true } },
-          creador:    { select: { id: true, nombre: true, apellido: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: pageSize,
-      }),
-      prisma.pago.count({ where }),
-    ])
+    const data = await prisma.pago.findMany({
+      where,
+      include: {
+        expediente: { select: { id: true, folio: true, nombre: true, apellido: true } },
+        creador:    { select: { id: true, nombre: true, apellido: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pageSize,
+    })
+    const total = await prisma.pago.count({ where })
 
     return paginatedOk(data, total, page, pageSize)
   } catch (e) {

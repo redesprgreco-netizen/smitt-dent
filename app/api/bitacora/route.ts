@@ -19,18 +19,16 @@ export async function GET(req: NextRequest) {
     if (accion)    where.accion      = { contains: accion, mode: 'insensitive' }
     if (tabla)     where.tablaAfectada = tabla
 
-    const [data, total] = await prisma.$transaction([
-      prisma.bitacora.findMany({
-        where,
-        include: {
-          usuario: { select: { id: true, nombre: true, apellido: true, rol: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: pageSize,
-      }),
-      prisma.bitacora.count({ where }),
-    ])
+    const data = await prisma.bitacora.findMany({
+      where,
+      include: {
+        usuario: { select: { id: true, nombre: true, apellido: true, rol: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pageSize,
+    })
+    const total = await prisma.bitacora.count({ where })
 
     return paginatedOk(data, total, page, pageSize)
   } catch (e) {

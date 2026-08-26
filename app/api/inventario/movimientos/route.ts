@@ -14,19 +14,17 @@ export async function GET(req: NextRequest) {
   const where: Record<string, unknown> = {}
   if (articuloId) where.articuloId = parseInt(articuloId)
 
-  const [data, total] = await prisma.$transaction([
-    prisma.inventarioMovimiento.findMany({
-      where,
-      include: {
-        articulo: { select: { id: true, nombre: true, unidadMedida: true } },
-        creador:  { select: { id: true, nombre: true, apellido: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: pageSize,
-    }),
-    prisma.inventarioMovimiento.count({ where }),
-  ])
+  const data = await prisma.inventarioMovimiento.findMany({
+    where,
+    include: {
+      articulo: { select: { id: true, nombre: true, unidadMedida: true } },
+      creador:  { select: { id: true, nombre: true, apellido: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+    skip,
+    take: pageSize,
+  })
+  const total = await prisma.inventarioMovimiento.count({ where })
 
   return paginatedOk(data, total, page, pageSize)
 }

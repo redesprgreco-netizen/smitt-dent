@@ -28,18 +28,16 @@ export async function GET(req: NextRequest) {
 
     if (doctoraId) where.doctoraId = parseInt(doctoraId)
 
-    const [data, total] = await prisma.$transaction([
-      prisma.cita.findMany({
-        where,
-        include: {
-          doctora: { select: { id: true, nombre: true, apellido: true, colorAgenda: true } },
-        },
-        orderBy: [{ fecha: 'asc' }, { hora: 'asc' }],
-        skip,
-        take: pageSize,
-      }),
-      prisma.cita.count({ where }),
-    ])
+    const data = await prisma.cita.findMany({
+      where,
+      include: {
+        doctora: { select: { id: true, nombre: true, apellido: true, colorAgenda: true } },
+      },
+      orderBy: [{ fecha: 'asc' }, { hora: 'asc' }],
+      skip,
+      take: pageSize,
+    })
+    const total = await prisma.cita.count({ where })
 
     // Normalizar fecha/hora a strings simples para el frontend
     const normalized = data.map(c => ({

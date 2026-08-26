@@ -6,54 +6,58 @@ import { requireAuth, ok, badRequest, forbidden, notFound, serverError } from '@
 type Params = { params: { id: string } }
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  const auth = await requireAuth()
-  if ('status' in auth) return auth
-  const { session } = auth
+  try {
+    const auth = await requireAuth()
+    if ('status' in auth) return auth
+    const { session } = auth
 
-  const id = parseInt(params.id)
-  const exp = await prisma.expediente.findUnique({
-    where: { id },
-    include: {
-      doctora:  { select: { id: true, nombre: true, apellido: true } },
-      historial: {
-        orderBy: { createdAt: 'desc' },
-        include: { creador: { select: { id: true, nombre: true, apellido: true, rol: true } } },
+    const id = parseInt(params.id)
+    const exp = await prisma.expediente.findUnique({
+      where: { id },
+      include: {
+        doctora:  { select: { id: true, nombre: true, apellido: true } },
+        historial: {
+          orderBy: { createdAt: 'desc' },
+          include: { creador: { select: { id: true, nombre: true, apellido: true, rol: true } } },
+        },
+        odontograma: { orderBy: { numeroPieza: 'asc' } },
+        planTratamiento: { orderBy: { createdAt: 'asc' } },
+        pagos: {
+          orderBy: { createdAt: 'desc' },
+          include: { creador: { select: { id: true, nombre: true, apellido: true } } },
+        },
+        antecedentes: true,
+        consentimiento: true,
       },
-      odontograma: { orderBy: { numeroPieza: 'asc' } },
-      planTratamiento: { orderBy: { createdAt: 'asc' } },
-      pagos: {
-        orderBy: { createdAt: 'desc' },
-        include: { creador: { select: { id: true, nombre: true, apellido: true } } },
-      },
-      antecedentes: true,
-      consentimiento: true,
-    },
-  })
-  if (!exp) return notFound('Expediente no encontrado')
+    })
+    if (!exp) return notFound('Expediente no encontrado')
 
-  // Doctoras solo ven sus pacientes
-  if (session.rol !== 'admin' && exp.doctoraId !== session.sub)
-    return forbidden('No tienes acceso a este expediente')
+    // Doctoras solo ven sus pacientes
+    if (session.rol !== 'admin' && exp.doctoraId !== session.sub)
+      return forbidden('No tienes acceso a este expediente')
 
-  // Calcular saldo (respetando monto manual si existe)
-  const totalFromItems = exp.planTratamiento.reduce(
-    (acc, pt) => acc + Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100), 0
-  )
+    // Calcular saldo (respetando monto manual si existe)
+    const totalFromItems = exp.planTratamiento.reduce(
+      (acc, pt) => acc + Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100), 0
+    )
 
-  const totalPresupuesto = exp.montoTotalManual 
-    ? Number(exp.montoTotalManual) 
-    : totalFromItems
+    const totalPresupuesto = exp.montoTotalManual 
+      ? Number(exp.montoTotalManual) 
+      : totalFromItems
 
-  const totalPagado = exp.pagos
-    .filter(p => p.estado === 'activo')
-    .reduce((acc, p) => acc + Number(p.monto), 0)
+    const totalPagado = exp.pagos
+      .filter(p => p.estado === 'activo')
+      .reduce((acc, p) => acc + Number(p.monto), 0)
 
-  return ok({ 
-    ...exp, 
-    totalPresupuesto, 
-    totalPagado, 
-    saldoPendiente: totalPresupuesto - totalPagado 
-  })
+    return ok({ 
+      ...exp, 
+      totalPresupuesto, 
+      totalPagado, 
+      saldoPendiente: totalPresupuesto - totalPagado 
+    })
+  } catch (e) {
+    return serverError(e)
+  }
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {

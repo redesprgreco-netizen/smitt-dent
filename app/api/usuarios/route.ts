@@ -15,16 +15,14 @@ export async function GET(req: NextRequest) {
     const where: Record<string, unknown> = {}
     if (estado) where.estado = estado
 
-    const [data, total] = await prisma.$transaction([
-      prisma.usuario.findMany({
-        where,
-        select: { id: true, nombre: true, apellido: true, correo: true, rol: true, colorAgenda: true, estado: true, createdAt: true, aprobadoPor: true },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: pageSize,
-      }),
-      prisma.usuario.count({ where }),
-    ])
+    const data = await prisma.usuario.findMany({
+      where,
+      select: { id: true, nombre: true, apellido: true, correo: true, rol: true, colorAgenda: true, estado: true, createdAt: true, aprobadoPor: true },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pageSize,
+    })
+    const total = await prisma.usuario.count({ where })
     return paginatedOk(data, total, page, pageSize)
   } catch (e) {
     return serverError(e)

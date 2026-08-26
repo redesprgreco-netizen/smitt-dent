@@ -17,15 +17,13 @@ export async function GET(req: NextRequest) {
     if (q) where.nombre = { contains: q, mode: 'insensitive' }
     if (bajoMin) where.stockActual = { lt: prisma.inventarioArticulo.fields.stockMinimo }
 
-    const [data, total] = await prisma.$transaction([
-      prisma.inventarioArticulo.findMany({
-        where,
-        orderBy: { nombre: 'asc' },
-        skip,
-        take: pageSize,
-      }),
-      prisma.inventarioArticulo.count({ where }),
-    ])
+    const data = await prisma.inventarioArticulo.findMany({
+      where,
+      orderBy: { nombre: 'asc' },
+      skip,
+      take: pageSize,
+    })
+    const total = await prisma.inventarioArticulo.count({ where })
 
     return paginatedOk(data, total, page, pageSize)
   } catch (e) {
