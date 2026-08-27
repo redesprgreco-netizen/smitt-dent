@@ -41,6 +41,8 @@ export interface Cita {
   notas: string | null
   doctoraId: number | null
   doctoraNombre: string | null
+  medicoTemporalNombre: string | null
+  medicoTemporalColor: string | null
   expedienteId: number | null
   estado: EstadoCita
   createdBy: number | null

@@ -156,6 +156,8 @@ model Cita {
   notas            String?    @db.Text
   doctoraId        Int?       @map("doctora_id")
   doctoraNombre    String?    @map("doctora_nombre") @db.VarChar(160)
+  medicoTemporalNombre String? @map("medico_temporal_nombre") @db.VarChar(160)
+  medicoTemporalColor  String? @map("medico_temporal_color") @db.VarChar(7)
   expedienteId     Int?       @map("expediente_id")
   estado           EstadoCita @default(pendiente)
   createdBy        Int?       @map("created_by")
@@ -167,7 +169,7 @@ model Cita {
   creador    Usuario?    @relation("CitaCreador", fields: [createdBy], references: [id], onDelete: SetNull)
   expediente Expediente? @relation(fields: [expedienteId], references: [id])
 
-  @@unique([doctoraId, fecha, hora])
+  @@unique([fecha, hora])
   @@map("citas")
 }
 

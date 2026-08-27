@@ -45,6 +45,39 @@ export default function Odontograma({ expedienteId, readOnly }: Props) {
   const [historial, setHistorial] = useState<OdontogramaHistorial[]>([])
   const [loadingHistorial, setLoadingHistorial] = useState(false)
 
+  async function descargarReporte() {
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF()
+    const fecha = new Date().toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })
+    const hallazgos = Object.values(piezas).filter(p => p.estado !== 'sin_tratamiento' || Object.keys(p.superficies ?? {}).length > 0 || p.notas?.trim())
+    const sugerencias = hallazgos.filter(p => ['caries', 'extraccion', 'pendiente'].includes(p.estado) || Object.values(p.superficies ?? {}).some(v => v === 'caries'))
+    let y = 20
+    const lineas = (texto: string, salto = 7) => {
+      const wrapped = doc.splitTextToSize(texto, 175)
+      doc.text(wrapped, 18, y)
+      y += wrapped.length * 5 + salto
+      if (y > 275) { doc.addPage(); y = 20 }
+    }
+    doc.setFontSize(18)
+    doc.text('Reporte de diagnóstico odontológico', 18, y)
+    y += 10
+    doc.setFontSize(10)
+    lineas(`Expediente #${expedienteId} · Generado: ${fecha}`, 10)
+    lineas(`Piezas con hallazgos: ${hallazgos.length}`, 8)
+    lineas('Hallazgos registrados:', 4)
+    if (hallazgos.length === 0) lineas('No se registraron hallazgos en el odontograma.')
+    for (const pieza of hallazgos) {
+      const superficies = Object.entries(pieza.superficies ?? {}).filter(([, estado]) => estado !== 'sano').map(([cara, estado]) => `${cara}: ${estado}`).join(', ')
+      lineas(`Pieza ${pieza.numeroPieza}: ${ESTADO_LABEL[pieza.estado]}${superficies ? ` · Superficies: ${superficies}` : ''}${pieza.notas?.trim() ? ` · Nota: ${pieza.notas.trim()}` : ''}`)
+    }
+    y += 3
+    lineas('Sugerencias de piezas a revisar o reparar:', 4)
+    if (sugerencias.length === 0) lineas('No hay sugerencias automáticas. Confirmar diagnóstico clínico.')
+    for (const pieza of sugerencias) lineas(`Pieza ${pieza.numeroPieza}: valorar atención para ${ESTADO_LABEL[pieza.estado].toLowerCase()}.`)
+    lineas('Este documento es un apoyo al diagnóstico y debe ser validado por la profesional tratante.')
+    doc.save(`reporte-odontograma-${expedienteId}.pdf`)
+  }
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -214,6 +247,9 @@ export default function Odontograma({ expedienteId, readOnly }: Props) {
           <button type="submit" className="btn btn-secondary btn-sm"><i className="ti ti-search" /></button>
           {buscarError && <span style={{ fontSize: 11.5, color: '#c0392b' }}>{buscarError}</span>}
         </form>
+        <button type="button" className="btn btn-primary btn-sm" onClick={descargarReporte}>
+          <i className="ti ti-file-download" /> Finalizar diagnóstico
+        </button>
       </div>
 
       {/* ── Resumen ── */}

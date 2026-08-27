@@ -3,6 +3,8 @@ import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth, ok, badRequest, forbidden, notFound, serverError } from '@/lib/api'
 
+const COLORES_TEMPORALES = ['#e11d48', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#7c3aed', '#c026d3', '#475569']
+
 type Params = { params: { id: string } }
 
 function normalize<T extends { fecha: Date; hora: Date }>(cita: T) {
@@ -44,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const body = await req.json()
-    const { nombrePaciente, apellidoPaciente, asunto, fecha, hora, notas, estado, expedienteId, doctoraId } = body
+    const { nombrePaciente, apellidoPaciente, asunto, fecha, hora, notas, estado, expedienteId, doctoraId, medicoTemporalNombre } = body
 
     let doctoraNombre: string | undefined
     if (doctoraId !== undefined && parseInt(doctoraId) !== cita.doctoraId) {
@@ -55,6 +57,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       if (!doctora) return badRequest('Doctora no encontrada')
       doctoraNombre = `${doctora.nombre} ${doctora.apellido}`
     }
+
+    const nombreTemporal = medicoTemporalNombre === undefined
+      ? cita.medicoTemporalNombre
+      : typeof medicoTemporalNombre === 'string' ? medicoTemporalNombre.trim() : ''
+    let colorTemporal = cita.medicoTemporalColor
+    const fechaTemporal = fecha ? new Date(fecha) : cita.fecha
+    const cambioDeFecha = fechaTemporal.getTime() !== cita.fecha.getTime()
+    if (nombreTemporal && (nombreTemporal !== cita.medicoTemporalNombre || cambioDeFecha)) {
+      const coloresUsados = await prisma.cita.findMany({
+        where: { fecha: fechaTemporal, id: { not: id }, medicoTemporalColor: { not: null } },
+        select: { medicoTemporalColor: true },
+      })
+      const usados = new Set(coloresUsados.map(item => item.medicoTemporalColor))
+      colorTemporal = COLORES_TEMPORALES.find(color => !usados.has(color)) ?? COLORES_TEMPORALES[coloresUsados.length % COLORES_TEMPORALES.length]
+    }
+    if (!nombreTemporal) colorTemporal = null
 
     const updated = await prisma.cita.update({
       where: { id },
@@ -69,6 +87,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(expedienteId !== undefined && { expedienteId: expedienteId ? parseInt(expedienteId) : null }),
         ...(doctoraId !== undefined && { doctoraId: parseInt(doctoraId) }),
         ...(doctoraNombre !== undefined && { doctoraNombre }),
+        ...(medicoTemporalNombre !== undefined && { medicoTemporalNombre: nombreTemporal || null, medicoTemporalColor: colorTemporal }),
       },
       include: {
         doctora: { select: { id: true, nombre: true, apellido: true, colorAgenda: true } },
@@ -77,7 +96,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return ok(normalize(updated))
   } catch (e: unknown) {
     if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2002')
-      return badRequest('Ya existe una cita en ese horario para esa doctora')
+      return badRequest('Ya existe una cita en esa fecha y hora. Elige otro horario.')
     return serverError(e)
   }
 }

@@ -3,6 +3,17 @@ import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth, ok, created, badRequest, serverError, paginatedOk, parsePagination } from '@/lib/api'
 
+const COLORES_TEMPORALES = ['#e11d48', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#7c3aed', '#c026d3', '#475569']
+
+async function colorTemporalDisponible(fecha: Date) {
+  const citas = await prisma.cita.findMany({
+    where: { fecha, medicoTemporalColor: { not: null } },
+    select: { medicoTemporalColor: true },
+  })
+  const usados = new Set(citas.map(cita => cita.medicoTemporalColor))
+  return COLORES_TEMPORALES.find(color => !usados.has(color)) ?? COLORES_TEMPORALES[citas.length % COLORES_TEMPORALES.length]
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireAuth()
   if ('status' in auth) return auth
@@ -59,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { nombrePaciente, apellidoPaciente, asunto, fecha, hora, notas, doctoraId, expedienteId } = body
+    const { nombrePaciente, apellidoPaciente, asunto, fecha, hora, notas, doctoraId, expedienteId, medicoTemporalNombre } = body
 
     if (!nombrePaciente || !apellidoPaciente || !asunto || !fecha || !hora || !doctoraId)
       return badRequest('Campos requeridos: nombrePaciente, apellidoPaciente, asunto, fecha, hora, doctoraId')
@@ -74,16 +85,22 @@ export async function POST(req: NextRequest) {
     })
     if (!doctora) return badRequest('Doctora no encontrada')
 
+    const fechaCita = new Date(fecha)
+    const nombreTemporal = typeof medicoTemporalNombre === 'string' ? medicoTemporalNombre.trim() : ''
+    const colorTemporal = nombreTemporal ? await colorTemporalDisponible(fechaCita) : null
+
     const cita = await prisma.cita.create({
       data: {
         nombrePaciente: nombrePaciente.trim(),
         apellidoPaciente: apellidoPaciente.trim(),
         asunto: asunto.trim(),
-        fecha: new Date(fecha),
+        fecha: fechaCita,
         hora: new Date(`1970-01-01T${hora}:00Z`),
         notas: notas?.trim() || null,
         doctoraId: parseInt(doctoraId),
         doctoraNombre: `${doctora.nombre} ${doctora.apellido}`,
+        medicoTemporalNombre: nombreTemporal || null,
+        medicoTemporalColor: colorTemporal,
         expedienteId: expedienteId ? parseInt(expedienteId) : null,
         createdBy: session.sub,
         creadoPorNombre: `${session.nombre} ${session.apellido}`,
@@ -96,7 +113,7 @@ export async function POST(req: NextRequest) {
     return created(cita)
   } catch (e: unknown) {
     if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2002')
-      return badRequest('Ya existe una cita para esa doctora en esa fecha y hora')
+      return badRequest('Ya existe una cita en esa fecha y hora. Elige otro horario.')
     return serverError(e)
   }
 }

@@ -19,11 +19,13 @@ export default function AppointmentModal({
   const [form, setForm] = useState({
     nombrePaciente: '', apellidoPaciente: '', asunto: '',
     fecha: defaultDate, hora: '09:00', notas: '',
+    medicoTemporalNombre: '',
     doctoraId: currentUserRol === 'admin' ? (doctoras[0]?.id ?? currentUserId) : currentUserId,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [estadoActual, setEstadoActual] = useState(editingCita?.estado ?? 'pendiente')
+  const [esTemporal, setEsTemporal] = useState(Boolean(editingCita?.medicoTemporalNombre))
 
   useEffect(() => {
     if (editingCita) {
@@ -34,11 +36,14 @@ export default function AppointmentModal({
         fecha: editingCita.fecha.slice(0, 10),
         hora: editingCita.hora || '09:00',
         notas: editingCita.notas ?? '',
+        medicoTemporalNombre: editingCita.medicoTemporalNombre ?? '',
         doctoraId: editingCita.doctoraId ?? (currentUserRol === 'admin' ? (doctoras[0]?.id ?? currentUserId) : currentUserId),
       })
       setEstadoActual(editingCita.estado)
+      setEsTemporal(Boolean(editingCita.medicoTemporalNombre))
     } else {
       setForm(f => ({ ...f, fecha: defaultDate }))
+      setEsTemporal(false)
     }
   }, [editingCita, defaultDate, open])
 
@@ -177,6 +182,20 @@ export default function AppointmentModal({
             <label className="form-label">Notas (opcional)</label>
             <textarea className="form-textarea" value={form.notas}
               onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Notas adicionales sobre la cita..." />
+          </div>
+
+          <div style={{ marginBottom: 14, padding: '12px 14px', background: '#fff8ed', border: '1px solid #f2d49b', borderRadius: 8 }}>
+            <label className="form-label">¿Estás agendando para algún médico temporal?</label>
+            <select className="form-select" value={esTemporal ? 'si' : 'no'}
+              onChange={e => { const value = e.target.value === 'si'; setEsTemporal(value); if (!value) setForm(f => ({ ...f, medicoTemporalNombre: '' })) }}>
+              <option value="no">No</option>
+              <option value="si">Sí</option>
+            </select>
+            {esTemporal && (
+              <input className="form-input" required style={{ marginTop: 8 }} value={form.medicoTemporalNombre}
+                onChange={e => setForm(f => ({ ...f, medicoTemporalNombre: e.target.value }))}
+                placeholder="Nombre del médico temporal" />
+            )}
           </div>
 
           {error && (

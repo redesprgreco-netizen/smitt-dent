@@ -98,11 +98,12 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
                   style={{
                     fontSize: 10.5, fontWeight: 500, borderRadius: 5, padding: '2px 5px',
                     marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    background: cita.doctora?.colorAgenda ? `${cita.doctora.colorAgenda}22` : '#dbeafe',
-                    color: cita.doctora?.colorAgenda ?? '#1e40af',
+                    background: cita.medicoTemporalColor ? `${cita.medicoTemporalColor}22` : cita.doctora?.colorAgenda ? `${cita.doctora.colorAgenda}22` : '#dbeafe',
+                    color: cita.medicoTemporalColor ?? cita.doctora?.colorAgenda ?? '#1e40af',
+                    ...(cita.medicoTemporalNombre && { borderLeft: `3px solid ${cita.medicoTemporalColor ?? '#e11d48'}` }),
                   }}
                 >
-                  {cita.nombrePaciente}
+                  {cita.medicoTemporalNombre ? `TEMP · ${cita.nombrePaciente}` : cita.nombrePaciente}
                 </div>
               ))}
               {citas.length > 3 && (

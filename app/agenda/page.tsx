@@ -190,14 +190,16 @@ export default function AgendaPage() {
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>{cita.nombrePaciente} {cita.apellidoPaciente}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{cita.asunto}</div>
+                  {cita.medicoTemporalNombre && <div style={{ fontSize: 11.5, color: cita.medicoTemporalColor ?? '#e11d48', fontWeight: 600 }}>Médico temporal: {cita.medicoTemporalNombre}</div>}
                 </div>
                 <span className="pill" style={{
                   marginLeft: 'auto',
-                  background: cita.doctora?.colorAgenda ? `${cita.doctora.colorAgenda}22` : '#dbeafe',
-                  color: cita.doctora?.colorAgenda ?? '#1e40af',
+                  background: cita.medicoTemporalColor ? `${cita.medicoTemporalColor}22` : cita.doctora?.colorAgenda ? `${cita.doctora.colorAgenda}22` : '#dbeafe',
+                  color: cita.medicoTemporalColor ?? cita.doctora?.colorAgenda ?? '#1e40af',
                 }}>
                   {cita.doctora?.nombre ?? cita.doctoraNombre ?? 'Sin asignar'}
                 </span>
+                {cita.medicoTemporalNombre && <span className="pill" style={{ background: `${cita.medicoTemporalColor ?? '#e11d48'}22`, color: cita.medicoTemporalColor ?? '#e11d48', fontWeight: 700 }}>Temporal</span>}
                 <span className={`pill ${
                   cita.estado === 'confirmada' ? 'pill-green'
                   : cita.estado === 'completada' ? 'pill-blue'
