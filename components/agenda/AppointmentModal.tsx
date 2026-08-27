@@ -253,4 +253,8 @@ export default function AppointmentModal({
       </div>
     </div>
   )
-}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, color: '#8a5200', cursor: 'pointer' }}>
+              <input type="checkbox" checked={esTemporal}
+                onChange={e => { setEsTemporal(e.target.checked); if (!e.target.checked) setForm(f => ({ ...f, medicoTemporalNombre: '' })) }} />
+              ¿Estás agendado para algún médico temporal?
+            </label>
