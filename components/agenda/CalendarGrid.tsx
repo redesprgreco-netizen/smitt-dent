@@ -45,9 +45,9 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
   }
 
   return (
-    <div className="card" style={{ overflow: 'hidden' }}>
+    <div className="card calendar-shell">
       {/* Header días */}
-      <div className="calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      <div className="calendar-grid-content calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
         {DIAS.map(d => (
           <div key={d} style={{
             textAlign: 'center', padding: '10px 4px', fontSize: 12,
@@ -57,7 +57,7 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
       </div>
 
       {/* Grid de días */}
-      <div className="calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      <div className="calendar-grid-content calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
         {cells.map((cell, i) => {
           const citas = citasByDay[cell.key] ?? []
           const isToday = cell.key === todayKey
@@ -67,8 +67,8 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
             <div
               key={i}
               onClick={() => onSelectDate(cell.key)}
+              className="calendar-day"
               style={{
-                minHeight: 96,
                 borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--border)' : 'none',
                 borderBottom: '1px solid var(--border)',
                 padding: 6,
@@ -97,7 +97,7 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
                   title={`${cita.nombrePaciente} ${cita.apellidoPaciente} — ${cita.asunto}`}
                   style={{
                     fontSize: 10.5, fontWeight: 500, borderRadius: 5, padding: '2px 5px',
-                    marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis',
                     background: cita.medicoTemporalColor ? `${cita.medicoTemporalColor}22` : cita.doctora?.colorAgenda ? `${cita.doctora.colorAgenda}22` : '#dbeafe',
                     color: cita.medicoTemporalColor ?? cita.doctora?.colorAgenda ?? '#1e40af',
                     ...(cita.medicoTemporalNombre && { borderLeft: `3px solid ${cita.medicoTemporalColor ?? '#e11d48'}` }),

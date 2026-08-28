@@ -173,12 +173,8 @@ export default function AppointmentModal({
                 onChange={e => setForm(f => ({ ...f, doctoraId: parseInt(e.target.value) }))}>
                 {doctoras.map(d => (
                   <option key={d.id} value={d.id}>{d.nombre} {d.apellido}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div style={{ marginBottom: 14 }}>
+                )
+              }
             <label className="form-label">Notas (opcional)</label>
             <textarea className="form-textarea" value={form.notas}
               onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Notas adicionales sobre la cita..." />

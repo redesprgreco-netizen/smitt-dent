@@ -316,7 +316,16 @@ body {
   padding: 28px 28px 24px;
   width: 480px;
   max-width: 95vw;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+}
+.modal-actions {
+  position: sticky;
+  bottom: -24px;
+  padding: 12px 0 24px;
+  background: var(--white);
+  z-index: 1;
 }
 .modal-title {
   font-family: 'Sora', sans-serif;
@@ -326,6 +335,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* ── Agenda ── */
+.calendar-shell { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+.calendar-grid-content { min-width: 640px; }
+.calendar-day { min-height: 96px; }
+
+@media (max-width: 640px) {
+  .calendar-grid-content { min-width: 600px; }
+  .calendar-day { min-height: 82px; padding: 5px !important; }
+  .modal-box { max-height: calc(100vh - 16px); }
+  .modal-actions { bottom: -18px; padding-bottom: 18px; }
 }
 
 /* ── Icon color helpers ── */
