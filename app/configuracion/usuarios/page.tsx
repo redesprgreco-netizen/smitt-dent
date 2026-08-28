@@ -249,8 +249,8 @@ export default function UsuariosPage() {
                           </button>
                         </>
                       ) : (
-                        <button className="btn btn-secondary btn-sm" title="Editar usuario" onClick={() => startEditing(u)}>
-                          <i className="ti ti-edit" />
+                        <button className="btn btn-secondary btn-sm" title="Editar nombre" onClick={() => startEditing(u)}>
+                          <i className="ti ti-edit" /> Editar nombre
                         </button>
                       )}
                     </div>
