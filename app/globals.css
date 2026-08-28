@@ -317,9 +317,12 @@ body {
   width: 480px;
   max-width: 95vw;
   max-height: calc(100vh - 32px);
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 60px rgba(0,0,0,0.18);
 }
+.modal-form { min-height: 0; overflow-y: auto; padding-right: 4px; }
 .modal-actions {
   position: sticky;
   bottom: -24px;
@@ -340,7 +343,8 @@ body {
 /* ── Agenda ── */
 .calendar-shell { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
 .calendar-grid-content { min-width: 640px; }
-.calendar-day { min-height: 96px; }
+.calendar-grid-content > * { min-width: 0; }
+.calendar-day { min-height: 96px; min-width: 0; }
 
 @media (max-width: 640px) {
   .calendar-grid-content { min-width: 600px; }

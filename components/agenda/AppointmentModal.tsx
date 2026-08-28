@@ -133,7 +133,7 @@ export default function AppointmentModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form className="modal-form" onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
               <label className="form-label">Nombre paciente</label>

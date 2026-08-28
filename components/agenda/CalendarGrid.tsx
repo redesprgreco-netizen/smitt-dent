@@ -47,7 +47,7 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
   return (
     <div className="card calendar-shell">
       {/* Header días */}
-      <div className="calendar-grid-content calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      <div className="calendar-grid-content calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
         {DIAS.map(d => (
           <div key={d} style={{
             textAlign: 'center', padding: '10px 4px', fontSize: 12,
@@ -57,7 +57,7 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
       </div>
 
       {/* Grid de días */}
-      <div className="calendar-grid-content calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      <div className="calendar-grid-content calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
         {cells.map((cell, i) => {
           const citas = citasByDay[cell.key] ?? []
           const isToday = cell.key === todayKey
