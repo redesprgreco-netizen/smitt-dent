@@ -262,6 +262,21 @@ body {
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover td { background: #f8faff; }
 
+/* ── Tabla de usuarios ── */
+.usuarios-table-card { overflow-x: auto !important; }
+.usuarios-table-card .data-table { min-width: 980px; }
+.usuarios-name-cell { min-width: 190px; max-width: 280px; white-space: normal; overflow-wrap: anywhere; }
+.usuarios-email-cell { min-width: 190px; max-width: 260px; white-space: normal; overflow-wrap: anywhere; }
+.usuarios-name-fields { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr); gap: 6px; min-width: 250px; }
+.usuarios-name-fields .form-input { min-width: 0; padding: 7px 9px; }
+.usuarios-actions { flex-wrap: wrap; min-width: 300px; }
+.agenda-colors { flex-wrap: wrap; max-width: 170px; }
+
+@media (max-width: 640px) {
+  .usuarios-table-card .data-table { min-width: 980px; }
+  .usuarios-name-fields { grid-template-columns: 1fr; min-width: 150px; }
+}
+
 /* ── Tabs ── */
 .tabs-bar {
   display: flex;

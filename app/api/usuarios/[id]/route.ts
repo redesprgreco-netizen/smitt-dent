@@ -33,7 +33,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!user) return notFound('Usuario no encontrado')
 
   try {
-    const { rol, colorAgenda, estado, password } = await req.json()
+    const { nombre, apellido, rol, colorAgenda, estado, password } = await req.json()
+
+    for (const [campo, valor] of [['nombre', nombre], ['apellido', apellido]] as const) {
+      if (valor !== undefined && (typeof valor !== 'string' || !valor.trim() || valor.trim().length > 80)) {
+        return badRequest(`El ${campo} debe tener entre 1 y 80 caracteres`)
+      }
+    }
 
     if (password !== undefined) {
       if (typeof password !== 'string' || password.length < 8) {
@@ -44,6 +50,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const updated = await prisma.usuario.update({
       where: { id },
       data: {
+        ...(nombre !== undefined && { nombre: nombre.trim() }),
+        ...(apellido !== undefined && { apellido: apellido.trim() }),
         ...(rol        && { rol }),
         ...(colorAgenda !== undefined && { colorAgenda: colorAgenda || null }),
         ...(estado     && { estado }),
@@ -70,8 +78,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       accion,
       tablaAfectada: 'usuarios',
       registroId: id,
-      valorAnterior: password ? null : { rol: user.rol, estado: user.estado, colorAgenda: user.colorAgenda },
-      valorNuevo: password ? { correo: user.correo } : { rol: updated.rol, estado: updated.estado, colorAgenda: updated.colorAgenda },
+      valorAnterior: password ? null : {
+        nombre: user.nombre, apellido: user.apellido, rol: user.rol,
+        estado: user.estado, colorAgenda: user.colorAgenda,
+      },
+      valorNuevo: password ? { correo: user.correo } : {
+        nombre: updated.nombre, apellido: updated.apellido, rol: updated.rol,
+        estado: updated.estado, colorAgenda: updated.colorAgenda,
+      },
       ipAddress: getIp(req),
     })
 

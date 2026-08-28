@@ -13,6 +13,8 @@ export default function UsuariosPage() {
   )
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [draftNombre, setDraftNombre] = useState('')
+  const [draftApellido, setDraftApellido] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -37,9 +39,27 @@ export default function UsuariosPage() {
     const data = await res.json()
     if (res.ok) {
       setUsuarios(prev => prev.map(u => u.id === id ? { ...u, ...data.data } : u))
+      return true
     } else {
       alert(data.error ?? 'Error al actualizar')
+      return false
     }
+  }
+
+  function startEditing(u: Usuario) {
+    setEditingId(u.id)
+    setDraftNombre(u.nombre)
+    setDraftApellido(u.apellido)
+  }
+
+  async function saveNames(u: Usuario) {
+    const nombre = draftNombre.trim()
+    const apellido = draftApellido.trim()
+    if (!nombre || !apellido) {
+      alert('Nombre y apellido son obligatorios')
+      return
+    }
+    if (await updateUsuario(u.id, { nombre, apellido })) setEditingId(null)
   }
 
   const pendientes = usuarios.filter(u => u.estado === 'pendiente')
@@ -123,7 +143,7 @@ export default function UsuariosPage() {
           <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>No hay usuarios en este filtro</p>
         </div>
       ) : (
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card usuarios-table-card" style={{ overflow: 'hidden' }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -138,13 +158,20 @@ export default function UsuariosPage() {
             <tbody>
               {usuarios.map(u => (
                 <tr key={u.id}>
-                  <td style={{ fontWeight: 500 }}>{u.nombre} {u.apellido}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{u.correo}</td>
+                  <td className="usuarios-name-cell" style={{ fontWeight: 500 }}>
+                    {editingId === u.id ? (
+                      <div className="usuarios-name-fields">
+                        <input className="form-input" value={draftNombre} maxLength={80} aria-label="Nombre" onChange={e => setDraftNombre(e.target.value)} />
+                        <input className="form-input" value={draftApellido} maxLength={80} aria-label="Apellido" onChange={e => setDraftApellido(e.target.value)} />
+                      </div>
+                    ) : `${u.nombre} ${u.apellido}`}
+                  </td>
+                  <td className="usuarios-email-cell" style={{ color: 'var(--text-muted)' }}>{u.correo}</td>
                   <td>
                     {editingId === u.id ? (
                       <select
                         className="form-select"
-                        style={{ width: 140 }}
+                        style={{ minWidth: 140 }}
                         defaultValue={u.rol}
                         onChange={e => updateUsuario(u.id, { rol: e.target.value })}
                       >
@@ -159,7 +186,7 @@ export default function UsuariosPage() {
                     )}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 5 }}>
+                    <div className="agenda-colors" style={{ display: 'flex', gap: 5 }}>
                       {COLORES.map(c => (
                         <div
                           key={c}
@@ -180,7 +207,7 @@ export default function UsuariosPage() {
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <div className="usuarios-actions" style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                       {u.estado === 'pendiente' && (
                         <button className="btn btn-primary btn-sm" onClick={() => updateUsuario(u.id, { estado: 'activo' })}>
                           <i className="ti ti-check" /> Aprobar
@@ -212,9 +239,20 @@ export default function UsuariosPage() {
                           <i className="ti ti-key" /> Contraseña
                         </button>
                       )}
-                      <button className="btn btn-secondary btn-sm" onClick={() => setEditingId(editingId === u.id ? null : u.id)}>
-                        <i className="ti ti-edit" />
-                      </button>
+                      {editingId === u.id ? (
+                        <>
+                          <button className="btn btn-primary btn-sm" onClick={() => saveNames(u)}>
+                            <i className="ti ti-check" /> Guardar
+                          </button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setEditingId(null)}>
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <button className="btn btn-secondary btn-sm" title="Editar usuario" onClick={() => startEditing(u)}>
+                          <i className="ti ti-edit" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
