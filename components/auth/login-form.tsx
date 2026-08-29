@@ -134,7 +134,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="mt-4 rounded-[1.5rem] bg-gradient-to-r from-teal-600 to-cyan-500 py-4 text-sm font-bold text-white shadow-xl shadow-teal-600/20 transition hover:brightness-110 active:scale-95 disabled:opacity-50"
+        className="login-submit mt-4 rounded-[1.5rem] py-4 text-sm font-bold shadow-xl transition hover:brightness-110 active:scale-95 disabled:opacity-50"
       >
         {loading ? 'Verificando...' : 'Ingresar al Panel'}
       </button>

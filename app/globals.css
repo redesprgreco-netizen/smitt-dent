@@ -69,6 +69,21 @@ body {
   z-index: 100;
   overflow-y: auto;
 }
+.sidebar-brand {
+  display: block;
+  height: 82px;
+  margin: -8px 16px 18px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+.sidebar-brand img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
 
 .layout-main {
   margin-top: var(--topbar-h);
@@ -200,6 +215,17 @@ body {
 .btn-danger:hover { background: #f9d3d0; transform: translateY(-1px); }
 .btn-sm { padding: 6px 12px; font-size: 12.5px; }
 .btn i { font-size: 16px; }
+.login-submit {
+  width: 100%;
+  display: block;
+  border: 0;
+  cursor: pointer;
+  background: #0f766e !important;
+  color: #fff !important;
+  box-shadow: 0 12px 24px rgba(15,118,110,0.2);
+}
+.login-submit:hover { background: #0d625c !important; }
+.login-submit:disabled { cursor: not-allowed; }
 
 /* ── Form inputs ── */
 .form-input,

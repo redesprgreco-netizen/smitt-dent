@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useSparkle } from './SparkleEffect'
 
@@ -29,6 +30,9 @@ export default function Sidebar({ rol, open, onNavigate }: SidebarProps) {
       className={`layout-sidebar${open ? ' open' : ''}`}
       onClickCapture={(e) => sparkle(e.clientX, e.clientY)}
     >
+      <Link href="/dashboard" className="sidebar-brand" onClick={onNavigate}>
+        <Image src="/dentista.jpg" alt="Smitt-Dent" width={520} height={320} priority />
+      </Link>
       <div style={{ flex: 1 }}>
         {NAV_ITEMS.filter(item => !item.adminOnly || rol === 'admin').map(item => {
           const showSection = item.section && item.section !== lastSection
