@@ -49,7 +49,7 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
       {/* Header días */}
       <div className="calendar-grid-content calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
         {DIAS.map(d => (
-          <div key={d} style={{
+          <div key={d} className="calendar-weekday" style={{
             textAlign: 'center', padding: '10px 4px', fontSize: 12,
             fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)',
           }}>{d}</div>
@@ -94,6 +94,7 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
               {citas.slice(0, 3).map(cita => (
                 <div
                   key={cita.id}
+                  className="calendar-appointment"
                   title={`${cita.nombrePaciente} ${cita.apellidoPaciente} — ${cita.asunto}`}
                   style={{
                     fontSize: 10.5, fontWeight: 500, borderRadius: 5, padding: '2px 5px',
