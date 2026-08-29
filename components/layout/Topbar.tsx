@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import Image from 'next/image'
 import { useSparkle } from './SparkleEffect'
 
 interface TopbarProps {
@@ -37,16 +38,8 @@ export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarPro
       </button>
 
       {/* Logo */}
-      <a href="/dashboard" className="topbar-logo-link" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-        <div className="topbar-logo-badge" style={{
-          width: 36, height: 36, background: 'var(--teal)', borderRadius: 9,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <i className="ti ti-tooth topbar-logo-icon" style={{ fontSize: 20, color: '#fff' }} />
-        </div>
-        <span style={{ fontFamily: 'Sora', fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>
-          Smitt<span style={{ color: 'var(--teal)' }}>Dent</span>
-        </span>
+      <a href="/dashboard" className="topbar-logo-link" aria-label="Ir al panel principal">
+        <Image src="/dentista.jpg" alt="Smitt-Dent" width={520} height={320} priority />
       </a>
 
       {/* Right side */}
