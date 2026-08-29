@@ -190,7 +190,11 @@ export default function AppointmentModal({
             {esTemporal && (
               <input className="form-input" required style={{ marginTop: 8 }} value={form.medicoTemporalNombre}
                 onChange={e => setForm(f => ({ ...f, medicoTemporalNombre: e.target.value }))}
-                placeholder="Nombre del médico temporal" />
+                ))}
+              </select>
+            </div>
+          )}
+
             )}
           </div>
 
