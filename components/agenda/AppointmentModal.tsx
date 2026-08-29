@@ -17,8 +17,7 @@ export default function AppointmentModal({
   open, onClose, onSaved, defaultDate, doctoras, currentUserId, currentUserRol, editingCita,
 }: AppointmentModalProps) {
   const [form, setForm] = useState({
-    nombrePaciente: '', apellidoPaciente: '', asunto: '',
-    fecha: defaultDate, hora: '09:00', notas: '',
+    nombrePaciente: '', apellidoPaciente: '', asunto: '', fecha: defaultDate, hora: '09:00', notas: '',
     medicoTemporalNombre: '',
     doctoraId: currentUserRol === 'admin' ? (doctoras[0]?.id ?? currentUserId) : currentUserId,
   })
@@ -30,13 +29,9 @@ export default function AppointmentModal({
   useEffect(() => {
     if (editingCita) {
       setForm({
-        nombrePaciente: editingCita.nombrePaciente,
-        apellidoPaciente: editingCita.apellidoPaciente,
-        asunto: editingCita.asunto,
-        fecha: editingCita.fecha.slice(0, 10),
-        hora: editingCita.hora || '09:00',
-        notas: editingCita.notas ?? '',
-        medicoTemporalNombre: editingCita.medicoTemporalNombre ?? '',
+        nombrePaciente: editingCita.nombrePaciente, apellidoPaciente: editingCita.apellidoPaciente,
+        asunto: editingCita.asunto, fecha: editingCita.fecha.slice(0, 10), hora: editingCita.hora || '09:00',
+        notas: editingCita.notas ?? '', medicoTemporalNombre: editingCita.medicoTemporalNombre ?? '',
         doctoraId: editingCita.doctoraId ?? (currentUserRol === 'admin' ? (doctoras[0]?.id ?? currentUserId) : currentUserId),
       })
       setEstadoActual(editingCita.estado)
@@ -55,9 +50,8 @@ export default function AppointmentModal({
     setLoading(true)
     try {
       const url = editingCita ? `/api/citas/${editingCita.id}` : '/api/citas'
-      const method = editingCita ? 'PATCH' : 'POST'
       const res = await fetch(url, {
-        method,
+        method: editingCita ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
@@ -89,8 +83,6 @@ export default function AppointmentModal({
     }
   }
 
-  // Cambia el estado de la cita (confirmar / marcar como atendida) sin cerrar el modal,
-  // para que se pueda seguir viendo/editando la cita después de marcarla.
   async function handleSetEstado(estado: 'confirmada' | 'completada') {
     if (!editingCita) return
     setLoading(true)
@@ -128,133 +120,35 @@ export default function AppointmentModal({
       <div className="modal-box" onClick={e => e.stopPropagation()}>
         <div className="modal-title">
           {editingCita ? 'Editar cita' : 'Anotar cita'}
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-muted)' }}>
-            <i className="ti ti-x" />
-          </button>
+          <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-muted)' }}><i className="ti ti-x" /></button>
         </div>
-
         <form className="modal-form" onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-            <div>
-              <label className="form-label">Nombre paciente</label>
-              <input className="form-input" required value={form.nombrePaciente}
-                onChange={e => setForm(f => ({ ...f, nombrePaciente: e.target.value }))} placeholder="María" />
-            </div>
-            <div>
-              <label className="form-label">Apellido paciente</label>
-              <input className="form-input" required value={form.apellidoPaciente}
-                onChange={e => setForm(f => ({ ...f, apellidoPaciente: e.target.value }))} placeholder="Rodríguez" />
-            </div>
+            <div><label className="form-label">Nombre paciente</label><input className="form-input" required value={form.nombrePaciente} onChange={e => setForm(f => ({ ...f, nombrePaciente: e.target.value }))} placeholder="María" /></div>
+            <div><label className="form-label">Apellido paciente</label><input className="form-input" required value={form.apellidoPaciente} onChange={e => setForm(f => ({ ...f, apellidoPaciente: e.target.value }))} placeholder="Rodríguez" /></div>
           </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <label className="form-label">Asunto</label>
-            <input className="form-input" required value={form.asunto}
-              onChange={e => setForm(f => ({ ...f, asunto: e.target.value }))} placeholder="Limpieza, Ortodoncia, Revisión..." />
-          </div>
-
+          <div style={{ marginBottom: 14 }}><label className="form-label">Asunto</label><input className="form-input" required value={form.asunto} onChange={e => setForm(f => ({ ...f, asunto: e.target.value }))} placeholder="Limpieza, Ortodoncia, Revisión..." /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-            <div>
-              <label className="form-label">Fecha</label>
-              <input className="form-input" type="date" required value={form.fecha}
-                onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
-            </div>
-            <div>
-              <label className="form-label">Hora</label>
-              <input className="form-input" type="time" required value={form.hora}
-                onChange={e => setForm(f => ({ ...f, hora: e.target.value }))} />
-            </div>
+            <div><label className="form-label">Fecha</label><input className="form-input" type="date" required value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} /></div>
+            <div><label className="form-label">Hora</label><input className="form-input" type="time" required value={form.hora} onChange={e => setForm(f => ({ ...f, hora: e.target.value }))} /></div>
           </div>
-
-          {currentUserRol === 'admin' && (
-            <div style={{ marginBottom: 14 }}>
-              <label className="form-label">Doctora</label>
-              <select className="form-select" value={form.doctoraId}
-                onChange={e => setForm(f => ({ ...f, doctoraId: parseInt(e.target.value) }))}>
-                {doctoras.map(d => (
-                  <option key={d.id} value={d.id}>{d.nombre} {d.apellido}</option>
-                )
-              }
-            <label className="form-label">Notas (opcional)</label>
-            <textarea className="form-textarea" value={form.notas}
-              onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Notas adicionales sobre la cita..." />
-          </div>
-
+          {currentUserRol === 'admin' && <div style={{ marginBottom: 14 }}><label className="form-label">Doctora</label><select className="form-select" value={form.doctoraId} onChange={e => setForm(f => ({ ...f, doctoraId: parseInt(e.target.value) }))}>{doctoras.map(d => <option key={d.id} value={d.id}>{d.nombre} {d.apellido}</option>)}</select></div>}
+          <div style={{ marginBottom: 14 }}><label className="form-label">Notas (opcional)</label><textarea className="form-textarea" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Notas adicionales sobre la cita..." /></div>
           <div style={{ marginBottom: 14, padding: '12px 14px', background: '#fff8ed', border: '1px solid #f2d49b', borderRadius: 8 }}>
             <label className="form-label">¿Estás agendando para algún médico temporal?</label>
-            <select className="form-select" value={esTemporal ? 'si' : 'no'}
-              onChange={e => { const value = e.target.value === 'si'; setEsTemporal(value); if (!value) setForm(f => ({ ...f, medicoTemporalNombre: '' })) }}>
-              <option value="no">No</option>
-              <option value="si">Sí</option>
-            </select>
-            {esTemporal && (
-              <input className="form-input" required style={{ marginTop: 8 }} value={form.medicoTemporalNombre}
-                onChange={e => setForm(f => ({ ...f, medicoTemporalNombre: e.target.value }))}
-                ))}
-              </select>
-            </div>
-          )}
-
-            )}
+            <select className="form-select" value={esTemporal ? 'si' : 'no'} onChange={e => { const value = e.target.value === 'si'; setEsTemporal(value); if (!value) setForm(f => ({ ...f, medicoTemporalNombre: '' })) }}><option value="no">No</option><option value="si">Sí</option></select>
+            {esTemporal && <input className="form-input" required style={{ marginTop: 8 }} value={form.medicoTemporalNombre} onChange={e => setForm(f => ({ ...f, medicoTemporalNombre: e.target.value }))} placeholder="Nombre del médico temporal" />}
           </div>
-
-          {error && (
-            <div style={{ background: '#fdeae8', color: '#c0392b', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14 }}>
-              {error}
-            </div>
-          )}
-
-          {editingCita && estadoActual !== 'cancelada' && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-              background: '#f8faff', border: '1px solid var(--border)', borderRadius: 8,
-              padding: '10px 12px', marginBottom: 14,
-            }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Estado de la cita:</span>
-              <span className={`pill ${
-                estadoActual === 'confirmada' ? 'pill-green'
-                : estadoActual === 'completada' ? 'pill-blue'
-                : 'pill-amber'
-              }`}>{estadoActual}</span>
-              <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
-                {estadoActual === 'pendiente' && (
-                  <button type="button" className="btn btn-secondary btn-sm" disabled={loading}
-                    onClick={() => handleSetEstado('confirmada')}>
-                    <i className="ti ti-circle-check" /> Confirmar cita
-                  </button>
-                )}
-                {estadoActual !== 'completada' && (
-                  <button type="button" className="btn btn-primary btn-sm" disabled={loading}
-                    onClick={() => handleSetEstado('completada')}>
-                    <i className="ti ti-check" /> Paciente llegó / atendida
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
+          {error && <div style={{ background: '#fdeae8', color: '#c0392b', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14 }}>{error}</div>}
+          {editingCita && estadoActual !== 'cancelada' && <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#f8faff', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}><span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Estado de la cita:</span><span className={`pill ${estadoActual === 'confirmada' ? 'pill-green' : estadoActual === 'completada' ? 'pill-blue' : 'pill-amber'}`}>{estadoActual}</span><div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>{estadoActual === 'pendiente' && <button type="button" className="btn btn-secondary btn-sm" disabled={loading} onClick={() => handleSetEstado('confirmada')}><i className="ti ti-circle-check" /> Confirmar cita</button>}{estadoActual !== 'completada' && <button type="button" className="btn btn-primary btn-sm" disabled={loading} onClick={() => handleSetEstado('completada')}><i className="ti ti-check" /> Paciente llegó / atendida</button>}</div></div>}
           <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20, flexWrap: 'wrap' }}>
-            {editingCita && estadoActual !== 'cancelada' && (
-              <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={loading} style={{ marginRight: 'auto' }}>
-                <i className="ti ti-calendar-cancel" /> Cancelar cita
-              </button>
-            )}
-            {editingCita && (
-              <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={loading} style={estadoActual !== 'cancelada' ? {} : { marginRight: 'auto' }}>
-                <i className="ti ti-trash" /> Eliminar cita
-              </button>
-            )}
+            {editingCita && estadoActual !== 'cancelada' && <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={loading} style={{ marginRight: 'auto' }}><i className="ti ti-calendar-cancel" /> Cancelar cita</button>}
+            {editingCita && <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={loading} style={estadoActual !== 'cancelada' ? {} : { marginRight: 'auto' }}><i className="ti ti-trash" /> Eliminar cita</button>}
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Guardando...' : editingCita ? 'Guardar cambios' : 'Anotar cita'}
-            </button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Guardando...' : editingCita ? 'Guardar cambios' : 'Anotar cita'}</button>
           </div>
         </form>
       </div>
     </div>
   )
-            <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, color: '#8a5200', cursor: 'pointer' }}>
-              <input type="checkbox" checked={esTemporal}
-                onChange={e => { setEsTemporal(e.target.checked); if (!e.target.checked) setForm(f => ({ ...f, medicoTemporalNombre: '' })) }} />
-              ¿Estás agendado para algún médico temporal?
-            </label>
+}
