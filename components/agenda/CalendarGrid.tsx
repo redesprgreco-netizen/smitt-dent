@@ -104,28 +104,34 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
               {citas.slice(0, 3).map(cita => {
                 const color = cita.medicoTemporalColor ?? cita.doctora?.colorAgenda ?? '#2563eb'
                 const isTemporal = Boolean(cita.medicoTemporalNombre)
+                const label = isTemporal ? `TEMP · ${cita.nombrePaciente}` : cita.nombrePaciente
+
                 return (
                   <div
                     key={cita.id}
                     className="calendar-appointment"
                     title={`${cita.nombrePaciente} ${cita.apellidoPaciente} — ${cita.asunto}`}
                     style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-                      minHeight: 12, marginBottom: 4, padding: 0,
-                      background: 'transparent', color: color,
+                      fontSize: 10.5,
+                      fontWeight: 500,
+                      borderRadius: 5,
+                      padding: '2px 5px',
+                      marginBottom: 2,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                      lineHeight: 1.2,
+                      background: `${color}22`,
+                      color: color,
+                      borderLeft: `3px solid ${color}`,
+                      maxWidth: '100%',
                     }}
                   >
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        width: 9, height: 9, display: 'inline-block',
-                        background: color,
-                        borderRadius: isTemporal ? 2 : '50%',
-                        transform: isTemporal ? 'rotate(45deg)' : 'none',
-                        boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
-                        flexShrink: 0,
-                      }}
-                    />
+                    <span className="calendar-appointment-icon" aria-hidden="true" style={{ marginRight: 4, fontSize: 10 }}>
+                      {isTemporal ? '■' : '●'}
+                    </span>
+                    <span className="calendar-appointment-label">{label}</span>
                   </div>
                 )
               })}
