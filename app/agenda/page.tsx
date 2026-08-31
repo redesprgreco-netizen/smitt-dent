@@ -17,6 +17,16 @@ function todayKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function parseHoraToMinutes(hora: string | null | undefined) {
+  if (!hora) return 24 * 60
+  const [hh = '0', mm = '0'] = hora.split(':')
+  return Number(hh) * 60 + Number(mm)
+}
+
+function sortCitasPorHora(a: Cita, b: Cita) {
+  return parseHoraToMinutes(a.hora) - parseHoraToMinutes(b.hora)
+}
+
 export default function AgendaPage() {
   const searchParams = useSearchParams()
   const [session, setSession] = useState<SessionInfo | null>(null)
@@ -63,7 +73,7 @@ export default function AgendaPage() {
 
   const citasByDay = useMemo(() => {
     const map: Record<string, Cita[]> = {}
-    for (const c of citas) {
+    for (const c of [...citas].sort(sortCitasPorHora)) {
       const key = c.fecha.slice(0, 10)
       if (!map[key]) map[key] = []
       map[key].push(c)
@@ -71,7 +81,10 @@ export default function AgendaPage() {
     return map
   }, [citas])
 
-  const citasDelDia = citasByDay[selectedDate] ?? []
+  const citasDelDia = useMemo(
+    () => [...(citasByDay[selectedDate] ?? [])].sort(sortCitasPorHora),
+    [citasByDay, selectedDate]
+  )
 
   function changeMonth(delta: number) {
     let m = month + delta
@@ -175,9 +188,7 @@ export default function AgendaPage() {
             <i className="ti ti-calendar-off" style={{ fontSize: 32, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }} />
             <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>No hay citas para este día</p>
           </div>
-        ) : citasDelDia
-            .sort((a, b) => a.hora.localeCompare(b.hora))
-            .map(cita => (
+        ) : citasDelDia.map(cita => (
               <div key={cita.id} className="card" style={{
                 marginBottom: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
                 cursor: 'pointer',

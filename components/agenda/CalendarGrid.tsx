@@ -15,6 +15,16 @@ function toKey(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
+function parseHoraToMinutes(hora: string | null | undefined) {
+  if (!hora) return 24 * 60
+  const [hh = '0', mm = '0'] = hora.split(':')
+  return Number(hh) * 60 + Number(mm)
+}
+
+function sortCitasPorHora(a: Cita, b: Cita) {
+  return parseHoraToMinutes(a.hora) - parseHoraToMinutes(b.hora)
+}
+
 export default function CalendarGrid({ year, month, citasByDay, selectedDate, onSelectDate }: CalendarGridProps) {
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -59,7 +69,7 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
       {/* Grid de días */}
       <div className="calendar-grid-content calendar-grid-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
         {cells.map((cell, i) => {
-          const citas = citasByDay[cell.key] ?? []
+          const citas = [...(citasByDay[cell.key] ?? [])].sort(sortCitasPorHora)
           const isToday = cell.key === todayKey
           const isSelected = cell.key === selectedDate
 
@@ -99,6 +109,7 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
                   style={{
                     fontSize: 10.5, fontWeight: 500, borderRadius: 5, padding: '2px 5px',
                     marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis',
+                    whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.2,
                     background: cita.medicoTemporalColor ? `${cita.medicoTemporalColor}22` : cita.doctora?.colorAgenda ? `${cita.doctora.colorAgenda}22` : '#dbeafe',
                     color: cita.medicoTemporalColor ?? cita.doctora?.colorAgenda ?? '#1e40af',
                     ...(cita.medicoTemporalNombre && { borderLeft: `3px solid ${cita.medicoTemporalColor ?? '#e11d48'}` }),

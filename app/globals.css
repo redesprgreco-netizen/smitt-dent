@@ -386,7 +386,14 @@ body {
 .calendar-grid-content { width: 100%; }
 .calendar-grid-content > * { min-width: 0; }
 .calendar-day { min-height: 96px; min-width: 0; }
-.calendar-appointment { min-width: 0; }
+.calendar-appointment {
+  min-width: 0;
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+  max-width: 100%;
+}
 
 @media (max-width: 640px) {
   .calendar-grid-content { min-width: 0 !important; }
