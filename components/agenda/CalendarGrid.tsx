@@ -101,23 +101,34 @@ export default function CalendarGrid({ year, month, citasByDay, selectedDate, on
                 {cell.day}
               </div>
 
-              {citas.slice(0, 3).map(cita => (
-                <div
-                  key={cita.id}
-                  className="calendar-appointment"
-                  title={`${cita.nombrePaciente} ${cita.apellidoPaciente} — ${cita.asunto}`}
-                  style={{
-                    fontSize: 10.5, fontWeight: 500, borderRadius: 5, padding: '2px 5px',
-                    marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis',
-                    whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.2,
-                    background: cita.medicoTemporalColor ? `${cita.medicoTemporalColor}22` : cita.doctora?.colorAgenda ? `${cita.doctora.colorAgenda}22` : '#dbeafe',
-                    color: cita.medicoTemporalColor ?? cita.doctora?.colorAgenda ?? '#1e40af',
-                    ...(cita.medicoTemporalNombre && { borderLeft: `3px solid ${cita.medicoTemporalColor ?? '#e11d48'}` }),
-                  }}
-                >
-                  {cita.medicoTemporalNombre ? `TEMP · ${cita.nombrePaciente}` : cita.nombrePaciente}
-                </div>
-              ))}
+              {citas.slice(0, 3).map(cita => {
+                const color = cita.medicoTemporalColor ?? cita.doctora?.colorAgenda ?? '#2563eb'
+                const isTemporal = Boolean(cita.medicoTemporalNombre)
+                return (
+                  <div
+                    key={cita.id}
+                    className="calendar-appointment"
+                    title={`${cita.nombrePaciente} ${cita.apellidoPaciente} — ${cita.asunto}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+                      minHeight: 12, marginBottom: 4, padding: 0,
+                      background: 'transparent', color: color,
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 9, height: 9, display: 'inline-block',
+                        background: color,
+                        borderRadius: isTemporal ? 2 : '50%',
+                        transform: isTemporal ? 'rotate(45deg)' : 'none',
+                        boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
+                        flexShrink: 0,
+                      }}
+                    />
+                  </div>
+                )
+              })}
               {citas.length > 3 && (
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
                   +{citas.length - 3} más
