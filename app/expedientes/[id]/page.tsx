@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Odontograma from '@/components/odontograma/Odontograma'
 import FichaClinica from '@/components/expedientes/FichaClinica'
 import ContratosTab from '@/components/expedientes/ContratosTab'
+import { loadImageAsDataUrl } from '@/lib/pdf'
 import type { Expediente, HistorialClinico, PlanTratamiento, Pago, AntecedentesPatologicos, ConsentimientoInformado } from '@/types'
 
 type Tab = 'ficha' | 'historial' | 'odontograma' | 'presupuesto' | 'pagos' | 'contratos'
@@ -37,10 +38,6 @@ export default function ExpedienteDetallePage() {
   const [savingPago, setSavingPago] = useState(false)
   const [anulando, setAnulando] = useState<number | null>(null)
 
-  // Plan de Pagos
-  const [montoTotalManual, setMontoTotalManual] = useState('')
-  const [numeroPagosPlan, setNumeroPagosPlan] = useState('')
-
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.ok) setSession({ id: d.data.id, rol: d.data.rol }) })
   }, [])
@@ -53,8 +50,6 @@ export default function ExpedienteDetallePage() {
       if (!res.ok) { router.push('/expedientes'); return }
       if (data.ok) {
         setExp(data.data)
-        setMontoTotalManual(data.data.montoTotalManual?.toString() || '')
-        setNumeroPagosPlan(data.data.numeroPagosPlan?.toString() || '')
       }
     } finally {
       setLoading(false)
@@ -73,18 +68,6 @@ export default function ExpedienteDetallePage() {
     let y = hoy.getFullYear() - nac.getFullYear()
     if (hoy.getMonth() - nac.getMonth() < 0 || (hoy.getMonth() - nac.getMonth() === 0 && hoy.getDate() < nac.getDate())) y--
     return y
-  }
-
-  async function guardarPlanPagos() {
-    const res = await fetch(`/api/expedientes/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        montoTotalManual: montoTotalManual ? parseFloat(montoTotalManual) : null,
-        numeroPagosPlan: numeroPagosPlan ? parseInt(numeroPagosPlan) : null,
-      }),
-    })
-    if (res.ok) load()
   }
 
   async function agregarNota(e: React.FormEvent) {
@@ -132,6 +115,47 @@ export default function ExpedienteDetallePage() {
     if (!confirm('¿Eliminar este ítem del presupuesto?')) return
     await fetch(`/api/plan-tratamiento/${planId}`, { method: 'DELETE' })
     load()
+  }
+
+  async function descargarPresupuesto() {
+    if (!exp) return
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF()
+    const logo = await loadImageAsDataUrl('/dentista.jpg')
+    if (logo) doc.addImage(logo, 'PNG', 18, 14, 48, 15)
+    const inicio = logo ? 42 : 22
+    doc.setTextColor('#0d2b55')
+    doc.setFontSize(18)
+    doc.text('Desglose de presupuesto', 18, inicio)
+    doc.setFontSize(10)
+    doc.text(`Paciente: ${exp.nombre} ${exp.apellido} (${exp.folio})`, 18, inicio + 9)
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX', { dateStyle: 'long' })}`, 18, inicio + 16)
+    let y = inicio + 30
+    doc.setFillColor('#e8f0f8')
+    doc.rect(18, y - 6, 174, 9, 'F')
+    doc.text('Concepto', 20, y)
+    doc.text('Cant.', 104, y)
+    doc.text('Precio', 125, y)
+    doc.text('Descuento', 153, y)
+    doc.text('Total', 178, y)
+    y += 10
+    for (const item of exp.planTratamiento) {
+      if (y > 275) { doc.addPage(); y = 20 }
+      const subtotal = Number(item.subtotal) * (1 - Number(item.descuentoPct) / 100)
+      doc.text(doc.splitTextToSize(item.concepto, 78), 20, y)
+      doc.text(String(Number(item.cantidad)), 104, y)
+      doc.text(fmt(Number(item.precioUnitario)), 125, y)
+      doc.text(`${Number(item.descuentoPct)}%`, 153, y)
+      doc.text(fmt(subtotal), 178, y)
+      y += 8
+    }
+    doc.line(18, y, 192, y)
+    doc.setFontSize(13)
+    doc.text(`Total del presupuesto: ${fmt(exp.totalPresupuesto)}`, 110, y + 10)
+    doc.setFontSize(10)
+    doc.text(`Pagado: ${fmt(exp.totalPagado)}`, 110, y + 18)
+    doc.text(`Saldo pendiente: ${fmt(exp.saldoPendiente)}`, 110, y + 26)
+    doc.save(`presupuesto-${exp.folio}.pdf`)
   }
 
   async function registrarPago(e: React.FormEvent) {
@@ -329,21 +353,11 @@ export default function ExpedienteDetallePage() {
       {/* Tab: Plan de tratamiento */}
       {tab === 'presupuesto' && (
         <div>
-          <div className="card" style={{ padding: 20, marginBottom: 16 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Plan de Pagos (Total y Cuotas)</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
-              <div>
-                <label className="form-label">Total a Cobrar (MXN)</label>
-                <input type="number" className="form-input" value={montoTotalManual} onChange={(e) => setMontoTotalManual(e.target.value)} placeholder="15000.00" />
-              </div>
-              <div>
-                <label className="form-label">Número de Pagos</label>
-                <input type="number" className="form-input" value={numeroPagosPlan} onChange={(e) => setNumeroPagosPlan(e.target.value)} placeholder="3" />
-              </div>
-              <button className="btn btn-primary btn-sm" onClick={guardarPlanPagos}>Guardar Plan</button>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <button className="btn btn-secondary btn-sm" onClick={descargarPresupuesto} title="Descargar desglose del presupuesto">
+              <i className="ti ti-file-download" /> Descargar presupuesto PDF
+            </button>
           </div>
-
           <div className="card" style={{ padding: 20, marginBottom: 16 }}>
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Agregar ítem al presupuesto</p>
             <form onSubmit={agregarPieza}>

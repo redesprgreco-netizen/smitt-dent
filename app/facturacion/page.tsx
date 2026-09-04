@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import type { Pago, PlanTratamiento } from '@/types'
+import { loadImageAsDataUrl } from '@/lib/pdf'
 
 interface ExpedienteBusqueda {
   id: number; folio: string; nombre: string; apellido: string
@@ -135,47 +136,100 @@ export default function FacturacionPage() {
     load()
   }
 
-  function generarRecibo(pago: Pago) {
-    // Abrir ventana de impresión con el recibo
-    const w = window.open('', '_blank', 'width=600,height=700')
-    if (!w) return
-    const paciente = pago.expediente
-      ? `${pago.expediente.nombre} ${pago.expediente.apellido} (${pago.expediente.folio})`
-      : '—'
-    const fecha = new Date(pago.createdAt).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })
-    w.document.write(`
-      <!DOCTYPE html><html><head>
-      <meta charset="UTF-8"/>
-      <title>Recibo ${pago.folioRecibo}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 40px; color: #0d2b55; }
-        h1 { font-size: 22px; margin: 0; }
-        .folio { color: #6b7fa3; font-size: 13px; margin-top: 4px; }
-        hr { border: none; border-top: 2px solid #dce5f0; margin: 20px 0; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 8px 0; font-size: 14px; }
-        td:last-child { text-align: right; font-weight: 600; }
-        .total { font-size: 22px; font-weight: 700; color: #0d2b55; }
-        .footer { margin-top: 40px; font-size: 12px; color: #6b7fa3; text-align: center; }
-        @media print { button { display: none; } }
-      </style></head><body>
-      <h1>SmittDent</h1>
-      <div class="folio">Recibo de pago</div>
-      <hr/>
-      <table>
-        <tr><td>Folio</td><td>${pago.folioRecibo}</td></tr>
-        <tr><td>Paciente</td><td>${paciente}</td></tr>
-        <tr><td>Fecha</td><td>${fecha}</td></tr>
-        <tr><td>Concepto</td><td>${pago.concepto ?? 'Pago de servicios dentales'}</td></tr>
-        <tr><td>Método de pago</td><td>${pago.metodoPago.charAt(0).toUpperCase() + pago.metodoPago.slice(1)}</td></tr>
-      </table>
-      <hr/>
-      <table><tr><td>TOTAL PAGADO</td><td class="total">${fmt(Number(pago.monto))}</td></tr></table>
-      <div class="footer">Este documento es un comprobante de pago.<br/>Gracias por su preferencia.</div>
-      <br/><button onclick="window.print()">🖨️ Imprimir recibo</button>
-      </body></html>
-    `)
-    w.document.close()
+  async function generarRecibo(pago: Pago) {
+    const res = await fetch(`/api/expedientes/${pago.expedienteId}`)
+    const data = await res.json()
+    if (!data.ok) return
+    const expediente = data.data
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF()
+    const logo = await loadImageAsDataUrl('/dentista.jpg')
+    if (logo) doc.addImage(logo, 'PNG', 18, 14, 48, 15)
+    doc.setTextColor('#0d2b55')
+    doc.setFontSize(18)
+    doc.text('Recibo de pago', 18, logo ? 42 : 22)
+    doc.setFontSize(10)
+    doc.setTextColor('#6b7fa3')
+    doc.text(`Folio: ${pago.folioRecibo}`, 18, logo ? 49 : 29)
+    doc.text(`Fecha: ${new Date(pago.createdAt).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}`, 18, logo ? 55 : 35)
+    doc.setTextColor('#0d2b55')
+    doc.setFontSize(11)
+    doc.text(`Paciente: ${expediente.nombre} ${expediente.apellido} (${expediente.folio})`, 18, logo ? 66 : 46)
+    doc.line(18, logo ? 72 : 52, 192, logo ? 72 : 52)
+    let y = logo ? 84 : 64
+    doc.setFontSize(11)
+    doc.text('Detalle del pago', 18, y)
+    y += 8
+    doc.setFontSize(10)
+    doc.text(`Concepto: ${pago.concepto ?? 'Pago de servicios dentales'}`, 18, y)
+    doc.text(`Método: ${pago.metodoPago.charAt(0).toUpperCase() + pago.metodoPago.slice(1)}`, 18, y + 7)
+    y += 21
+    const totalPagado = expediente.pagos.filter((item: Pago) => item.estado === 'activo').reduce((sum: number, item: Pago) => sum + Number(item.monto), 0)
+    const totalPresupuesto = Number(expediente.totalPresupuesto)
+    const saldo = Math.max(0, totalPresupuesto - totalPagado)
+    doc.setFontSize(11)
+    doc.text(`Este pago: ${fmt(Number(pago.monto))}`, 18, y)
+    doc.text(`Total del presupuesto: ${fmt(totalPresupuesto)}`, 18, y + 8)
+    doc.text(`Total pagado: ${fmt(totalPagado)}`, 18, y + 16)
+    doc.setFontSize(13)
+    doc.text(`Saldo pendiente: ${fmt(saldo)}`, 18, y + 28)
+    y += 42
+    doc.setFontSize(11)
+    doc.text('Pagos registrados', 18, y)
+    y += 7
+    doc.setFontSize(9)
+    for (const item of expediente.pagos) {
+      if (y > 275) { doc.addPage(); y = 20 }
+      const estado = item.estado === 'activo' ? 'Activo' : 'Anulado'
+      doc.text(`${item.folioRecibo}  ${new Date(item.createdAt).toLocaleDateString('es-MX')}  ${fmt(Number(item.monto))}  ${estado}`, 18, y)
+      y += 6
+    }
+    doc.setFontSize(9)
+    doc.setTextColor('#6b7fa3')
+    doc.text('Este documento es un comprobante de pago.', 18, Math.min(y + 12, 285))
+    doc.save(`recibo-${pago.folioRecibo}.pdf`)
+  }
+
+  async function descargarPresupuesto() {
+    if (!expSeleccionado) return
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF()
+    const logo = await loadImageAsDataUrl('/dentista.jpg')
+    if (logo) doc.addImage(logo, 'PNG', 18, 14, 48, 15)
+    const inicio = logo ? 42 : 22
+    doc.setTextColor('#0d2b55')
+    doc.setFontSize(18)
+    doc.text('Desglose de presupuesto', 18, inicio)
+    doc.setFontSize(10)
+    doc.text(`Paciente: ${expSeleccionado.nombre} ${expSeleccionado.apellido} (${expSeleccionado.folio})`, 18, inicio + 9)
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-MX', { dateStyle: 'long' })}`, 18, inicio + 16)
+    let y = inicio + 30
+    doc.setFontSize(10)
+    doc.setFillColor('#e8f0f8')
+    doc.rect(18, y - 6, 174, 9, 'F')
+    doc.text('Concepto', 20, y)
+    doc.text('Cant.', 104, y)
+    doc.text('Precio', 125, y)
+    doc.text('Descuento', 153, y)
+    doc.text('Total', 178, y)
+    y += 10
+    for (const item of expSeleccionado.planTratamiento) {
+      if (y > 275) { doc.addPage(); y = 20 }
+      const subtotal = Number(item.subtotal) * (1 - Number(item.descuentoPct) / 100)
+      doc.text(doc.splitTextToSize(item.concepto, 78), 20, y)
+      doc.text(String(Number(item.cantidad)), 104, y)
+      doc.text(fmt(Number(item.precioUnitario)), 125, y)
+      doc.text(`${Number(item.descuentoPct)}%`, 153, y)
+      doc.text(fmt(subtotal), 178, y)
+      y += 8
+    }
+    doc.line(18, y, 192, y)
+    doc.setFontSize(13)
+    doc.text(`Total del presupuesto: ${fmt(expSeleccionado.totalPresupuesto)}`, 110, y + 10)
+    doc.setFontSize(10)
+    doc.text(`Pagado: ${fmt(expSeleccionado.totalPagado)}`, 110, y + 18)
+    doc.text(`Saldo pendiente: ${fmt(expSeleccionado.saldoPendiente)}`, 110, y + 26)
+    doc.save(`presupuesto-${expSeleccionado.folio}.pdf`)
   }
 
   const totalMonto = pagos.filter(p => p.estado === 'activo').reduce((a, p) => a + Number(p.monto), 0)
@@ -261,7 +315,7 @@ export default function FacturacionPage() {
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={() => generarRecibo(pago)}
-                        title="Ver/imprimir recibo"
+                        title="Descargar recibo PDF"
                       >
                         <i className="ti ti-printer" />
                       </button>
@@ -362,6 +416,9 @@ export default function FacturacionPage() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: s.color }}>{s.value}</div>
                     </div>
                   ))}
+                  <button className="btn btn-secondary btn-sm" onClick={descargarPresupuesto} title="Descargar desglose del presupuesto">
+                    <i className="ti ti-file-download" /> PDF
+                  </button>
                 </div>
               </div>
 

@@ -36,14 +36,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
     if (session.rol !== 'admin' && exp.doctoraId !== session.sub)
       return forbidden('No tienes acceso a este expediente')
 
-    // Calcular saldo (respetando monto manual si existe)
+    // El presupuesto se calcula a partir de los conceptos cobrables del plan.
     const totalFromItems = exp.planTratamiento.reduce(
       (acc, pt) => acc + Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100), 0
     )
 
-    const totalPresupuesto = exp.montoTotalManual 
-      ? Number(exp.montoTotalManual) 
-      : totalFromItems
+    const totalPresupuesto = totalFromItems
 
     const totalPagado = exp.pagos
       .filter(p => p.estado === 'activo')
@@ -79,9 +77,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       sexo, ocupacion, domicilio, ciudad, codigoPostal,
       contactoEmergenciaNombre, contactoEmergenciaTelefono,
       llenadoPorNombre, llenadoPorParentesco,
-      // Campos nuevos para plan de pagos
-      montoTotalManual,
-      numeroPagosPlan,
     } = body
 
     // Solo admin puede cambiar estado
@@ -108,10 +103,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(contactoEmergenciaTelefono !== undefined && { contactoEmergenciaTelefono: contactoEmergenciaTelefono?.trim().slice(0, 20) || null }),
         ...(llenadoPorNombre !== undefined && { llenadoPorNombre: llenadoPorNombre?.trim().slice(0, 120) || null }),
         ...(llenadoPorParentesco !== undefined && { llenadoPorParentesco: llenadoPorParentesco?.trim().slice(0, 60) || null }),
-        
-        // Campos nuevos para plan de pagos
-        ...(montoTotalManual !== undefined && { montoTotalManual: montoTotalManual ? Number(montoTotalManual) : null }),
-        ...(numeroPagosPlan !== undefined && { numeroPagosPlan: numeroPagosPlan ? Number(numeroPagosPlan) : null }),
       },
     })
     return ok(updated)

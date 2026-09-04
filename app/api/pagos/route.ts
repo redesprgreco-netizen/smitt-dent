@@ -64,9 +64,7 @@ export async function POST(req: NextRequest) {
       (acc, pt) => acc + Number(pt.subtotal) * (1 - Number(pt.descuentoPct) / 100), 0
     )
 
-    const totalPresupuesto = exp.montoTotalManual 
-      ? Number(exp.montoTotalManual) 
-      : totalFromItems
+    const totalPresupuesto = totalFromItems
 
     const totalPagado = exp.pagos
       .filter(p => p.estado === 'activo')
