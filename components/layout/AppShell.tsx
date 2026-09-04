@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import Topbar from './Topbar'
 import Sidebar from './Sidebar'
 import { SparkleProvider } from './SparkleEffect'
+import PaymentAnnouncement from './PaymentAnnouncement'
 
 interface AppShellProps {
   nombre: string
@@ -29,6 +30,7 @@ export default function AppShell({ nombre, apellido, rol, children }: AppShellPr
         <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
       <main className="layout-main">
+        <PaymentAnnouncement />
         <div key={pathname} className="page-fade-in">
           {children}
         </div>
