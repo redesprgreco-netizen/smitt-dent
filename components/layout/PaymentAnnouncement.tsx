@@ -9,10 +9,6 @@ export default function PaymentAnnouncement() {
   const [detailsOpen, setDetailsOpen] = useState(false)
 
   useEffect(() => {
-    setVisible(sessionStorage.getItem('gresanova-payment-announcement-hidden') !== 'true')
-  }, [])
-
-  useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') setDetailsOpen(false)
     }
@@ -24,7 +20,6 @@ export default function PaymentAnnouncement() {
   }, [detailsOpen])
 
   function dismiss() {
-    sessionStorage.setItem('gresanova-payment-announcement-hidden', 'true')
     setVisible(false)
   }
 
