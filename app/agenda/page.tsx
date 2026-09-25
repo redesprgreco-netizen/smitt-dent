@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import CalendarGrid from '@/components/agenda/CalendarGrid'
 import AppointmentModal from '@/components/agenda/AppointmentModal'
 import type { Cita, Usuario } from '@/types'
@@ -28,6 +28,7 @@ function sortCitasPorHora(a: Cita, b: Cita) {
 }
 
 export default function AgendaPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [session, setSession] = useState<SessionInfo | null>(null)
   const [doctoras, setDoctoras] = useState<Pick<Usuario, 'id' | 'nombre' | 'apellido' | 'colorAgenda'>[]>([])
@@ -53,13 +54,32 @@ export default function AgendaPage() {
     setLoading(true)
     try {
       const mes = `${year}-${String(month + 1).padStart(2, '0')}`
-      const res = await fetch(`/api/citas?mes=${mes}&pageSize=500`)
+      const pageSize = 100
+      const res = await fetch(`/api/citas?mes=${mes}&page=1&pageSize=${pageSize}`)
+      if (res.status === 401) {
+        router.replace('/login')
+        return
+      }
+
       const data = await res.json()
-      if (data.ok) setCitas(data.data)
+      if (!data.ok) return
+
+      const citasMes = [...data.data]
+      for (let page = 2; page <= data.totalPages; page++) {
+        const pageRes = await fetch(`/api/citas?mes=${mes}&page=${page}&pageSize=${pageSize}`)
+        if (pageRes.status === 401) {
+          router.replace('/login')
+          return
+        }
+        const pageData = await pageRes.json()
+        if (!pageData.ok) return
+        citasMes.push(...pageData.data)
+      }
+      setCitas(citasMes)
     } finally {
       setLoading(false)
     }
-  }, [year, month])
+  }, [year, month, router])
 
   useEffect(() => { loadCitas() }, [loadCitas])
 

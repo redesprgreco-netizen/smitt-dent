@@ -55,6 +55,10 @@ export default function AppointmentModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
+      if (res.status === 401) {
+        window.location.assign('/login')
+        return
+      }
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Error al guardar la cita'); return }
       onSaved()
