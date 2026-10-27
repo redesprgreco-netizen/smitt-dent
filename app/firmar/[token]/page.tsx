@@ -7,6 +7,7 @@ interface DocInfo {
   estado: string
   firmadoEn: string | null
   pdfUrl: string
+  downloadUrl: string | null
   contratoNombre: string
 }
 
@@ -100,6 +101,11 @@ export default function FirmarPage() {
       })
       const data = await res.json()
       if (res.ok) {
+        setInfo(current => current ? {
+          ...current,
+          pdfUrl: data.data.pdfUrl,
+          downloadUrl: data.data.downloadUrl,
+        } : current)
         setFirmado(true)
       } else {
         alert(data.error ?? 'No se pudo enviar la firma')
@@ -127,7 +133,18 @@ export default function FirmarPage() {
       <Centrado>
         <i className="ti ti-circle-check" style={{ fontSize: 48, color: '#1a9e5c' }} />
         <h2 style={{ marginTop: 14, fontSize: 19, fontFamily: 'Sora' }}>¡Documento firmado!</h2>
-        <p style={{ marginTop: 6, fontSize: 14, color: '#666' }}>Gracias, {info?.clienteNombre}. Ya puedes cerrar esta ventana.</p>
+        <p style={{ marginTop: 6, fontSize: 14, color: '#666' }}>Gracias, {info?.clienteNombre}.</p>
+        {info?.pdfUrl && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 18 }}>
+            <a href={info.pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+              <i className="ti ti-eye" /> Abrir documento firmado
+            </a>
+            <a href={info.downloadUrl ?? info.pdfUrl} className="btn btn-primary">
+              <i className="ti ti-download" /> Descargar PDF firmado
+            </a>
+          </div>
+        )}
+        <p style={{ marginTop: 14, fontSize: 13, color: '#666' }}>Ya puedes cerrar esta ventana.</p>
       </Centrado>
     )
   }
@@ -142,6 +159,13 @@ export default function FirmarPage() {
       <div style={{ border: '1px solid #ddd', borderRadius: 10, overflow: 'hidden', marginBottom: 18, height: '60vh' }}>
         <iframe src={info?.pdfUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Contrato" />
       </div>
+      <p style={{ fontSize: 13, marginTop: -10, marginBottom: 18 }}>
+        ¿No puedes ver el documento?{' '}
+        <a href={info?.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1d6fd8' }}>
+          Ábrelo en otra pestaña
+        </a>
+        .
+      </p>
 
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 18, cursor: 'pointer' }}>
         <input type="checkbox" checked={acepto} onChange={e => setAcepto(e.target.checked)} style={{ width: 18, height: 18 }} />

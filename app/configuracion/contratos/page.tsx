@@ -250,6 +250,9 @@ export default function ContratosPage() {
                 <button className="btn btn-secondary btn-sm" onClick={descargarQr}>
                   <i className="ti ti-download" /> Descargar QR
                 </button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setUltimoLink(null)}>
+                  <i className="ti ti-x" /> Cerrar
+                </button>
               </div>
             </div>
           </div>
@@ -297,9 +300,21 @@ export default function ContratosPage() {
                     {f.firmadoEn ? new Date(f.firmadoEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                   </td>
                   <td>
-                    <button className="btn btn-secondary btn-sm" onClick={() => copiar(`${window.location.origin}/firmar/${f.token}`)}>
-                      <i className="ti ti-copy" /> Copiar enlace
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => copiar(`${window.location.origin}/firmar/${f.token}`)}>
+                        <i className="ti ti-copy" /> Copiar enlace
+                      </button>
+                      {f.estado === 'firmado' && (
+                        <>
+                          <a className="btn btn-secondary btn-sm" href={`/api/firmas/${f.id}/documento`} target="_blank" rel="noopener noreferrer">
+                            <i className="ti ti-eye" /> Abrir PDF
+                          </a>
+                          <a className="btn btn-secondary btn-sm" href={`/api/firmas/${f.id}/documento?descargar=1`}>
+                            <i className="ti ti-download" /> Descargar
+                          </a>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

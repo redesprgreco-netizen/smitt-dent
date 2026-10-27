@@ -14,6 +14,7 @@ interface FirmaContrato {
 
 interface FirmaDetalle extends FirmaContrato {
   pdfUrl: string | null
+  downloadUrl: string | null
   firmaUrl: string | null
 }
 
@@ -65,9 +66,14 @@ export default function ContratosTab({ expedienteId, pacienteNombre }: { expedie
   }
 
   async function verDetalle(id: number) {
-    const res = await fetch(`/api/firmas/${id}`)
-    const data = await res.json()
-    if (data.ok) setDetalle(data.data)
+    try {
+      const res = await fetch(`/api/firmas/${id}`)
+      const data = await res.json()
+      if (res.ok && data.ok) setDetalle(data.data)
+      else alert(data.error ?? 'No se pudo cargar el contrato')
+    } catch {
+      alert('No se pudo cargar el contrato')
+    }
   }
 
   function copiar(texto: string) {
@@ -95,6 +101,14 @@ export default function ContratosTab({ expedienteId, pacienteNombre }: { expedie
                 <i className="ti ti-copy" /> Copiar link
               </button>
             </div>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setUltimoLink(null)}
+              aria-label="Cerrar código QR"
+              title="Cerrar"
+            >
+              <i className="ti ti-x" /> Cerrar
+            </button>
           </div>
         )}
       </div>
@@ -118,7 +132,13 @@ export default function ContratosTab({ expedienteId, pacienteNombre }: { expedie
             <tbody>
               {firmas.map(f => (
                 <tr key={f.id}>
-                  <td>{f.contrato.nombre}</td>
+                  <td>
+                    {f.estado === 'firmado' ? (
+                      <a href={`/api/firmas/${f.id}/documento`} target="_blank" rel="noopener noreferrer">
+                        {f.contrato.nombre}
+                      </a>
+                    ) : f.contrato.nombre}
+                  </td>
                   <td>
                     <span className={`pill ${f.estado === 'firmado' ? 'pill-green' : 'pill-amber'}`}>
                       {f.estado === 'firmado' ? 'Firmado' : 'Pendiente'}
@@ -129,9 +149,14 @@ export default function ContratosTab({ expedienteId, pacienteNombre }: { expedie
                   </td>
                   <td>
                     {f.estado === 'firmado' && (
-                      <button className="btn btn-secondary btn-sm" onClick={() => verDetalle(f.id)}>
-                        <i className="ti ti-eye" /> Ver
-                      </button>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => verDetalle(f.id)}>
+                          <i className="ti ti-eye" /> Firma
+                        </button>
+                        <a className="btn btn-secondary btn-sm" href={`/api/firmas/${f.id}/documento?descargar=1`}>
+                          <i className="ti ti-download" /> Descargar
+                        </a>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -160,9 +185,19 @@ export default function ContratosTab({ expedienteId, pacienteNombre }: { expedie
               </>
             )}
             {detalle.pdfUrl && (
-              <a href={detalle.pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
-                <i className="ti ti-file-text" /> Ver documento firmado
-              </a>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <a href={detalle.pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
+                  <i className="ti ti-eye" /> Abrir documento firmado
+                </a>
+                {detalle.downloadUrl && (
+                  <a href={detalle.downloadUrl} className="btn btn-secondary btn-sm">
+                    <i className="ti ti-download" /> Descargar PDF
+                  </a>
+                )}
+                <button className="btn btn-secondary btn-sm" onClick={() => detalle.pdfUrl && copiar(detalle.pdfUrl)}>
+                  <i className="ti ti-share" /> Copiar enlace temporal
+                </button>
+              </div>
             )}
             <div style={{ marginTop: 16, textAlign: 'right' }}>
               <button className="btn btn-secondary btn-sm" onClick={() => setDetalle(null)}>Cerrar</button>

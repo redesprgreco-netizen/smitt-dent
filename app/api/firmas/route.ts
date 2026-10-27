@@ -31,25 +31,42 @@ export async function POST(req: NextRequest) {
   try {
     const { clienteNombre, clienteTelefono, expedienteId } = await req.json()
     if (!clienteNombre?.trim()) return badRequest('Falta el nombre del cliente')
+    if (expedienteId != null && (!Number.isInteger(expedienteId) || expedienteId < 1)) {
+      return badRequest('El expediente no es válido')
+    }
 
     const contrato = await prisma.contrato.findFirst({ where: { activo: true } })
     if (!contrato) return badRequest('No hay ningún contrato activo. Sube un PDF primero en Configuración → Contratos.')
 
-    const token = crypto.randomBytes(24).toString('base64url')
+    const nombre = clienteNombre.trim()
+    const telefono = clienteTelefono?.trim() || null
+    const expediente = expedienteId ?? null
+    const pendiente = await prisma.firmaContrato.findFirst({
+      where: expediente
+        ? { contratoId: contrato.id, expedienteId: expediente, estado: 'pendiente' }
+        : {
+          contratoId: contrato.id,
+          expedienteId: null,
+          clienteNombre: nombre,
+          clienteTelefono: telefono,
+          estado: 'pendiente',
+        },
+      orderBy: { createdAt: 'desc' },
+    })
 
-    const firma = await prisma.firmaContrato.create({
+    const firma = pendiente ?? await prisma.firmaContrato.create({
       data: {
-        token,
+        token: crypto.randomBytes(24).toString('base64url'),
         contratoId: contrato.id,
-        expedienteId: expedienteId ?? null,
-        clienteNombre: clienteNombre.trim(),
-        clienteTelefono: clienteTelefono?.trim() || null,
+        expedienteId: expediente,
+        clienteNombre: nombre,
+        clienteTelefono: telefono,
         creadoPor: session.sub,
       },
     })
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`
-    const link = `${baseUrl}/firmar/${token}`
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/+$/, '')
+    const link = `${baseUrl}/firmar/${firma.token}`
 
     return ok({ ...firma, link })
   } catch (e) {

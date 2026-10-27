@@ -541,10 +541,15 @@ export default function FichaClinica({ expediente, onUpdated, onGoToContratos }:
               {linkGenerado && (
                 <div style={{ marginTop: 12 }}>
                   <code style={{ fontSize: 12, wordBreak: 'break-all', display: 'block', marginBottom: 8 }}>{linkGenerado}</code>
-                  <button type="button" className="btn btn-secondary btn-sm"
-                    onClick={() => { navigator.clipboard.writeText(linkGenerado); alert('Enlace copiado') }}>
-                    <i className="ti ti-copy" /> Copiar link
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" className="btn btn-secondary btn-sm"
+                      onClick={() => { navigator.clipboard.writeText(linkGenerado); alert('Enlace copiado') }}>
+                      <i className="ti ti-copy" /> Copiar link
+                    </button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setLinkGenerado(null)}>
+                      <i className="ti ti-x" /> Cerrar
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
