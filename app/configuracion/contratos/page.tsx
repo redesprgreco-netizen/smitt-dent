@@ -154,10 +154,15 @@ export default function ContratosPage() {
       <div className="card" style={{ padding: 20 }}>
         <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Contrato (PDF)</h3>
         {contrato ? (
-          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 12 }}>
-            <i className="ti ti-file-check" style={{ color: 'var(--green)', marginRight: 6 }} />
-            Documento activo: <strong>{contrato.nombre}</strong>
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+            <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>
+              <i className="ti ti-file-check" style={{ color: 'var(--green)', marginRight: 6 }} />
+              Documento activo: <strong>{contrato.nombre}</strong>
+            </p>
+            <a className="btn btn-secondary btn-sm" href="/api/contratos/documento">
+              <i className="ti ti-download" /> Descargar PDF
+            </a>
+          </div>
         ) : (
           <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 12 }}>
             Aún no has subido ningún contrato.
