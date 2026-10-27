@@ -20,3 +20,9 @@ Todo lo que NO viene aquí queda igual. No requiere cambios en la base de datos 
 
 ## Opcional
 - components/layout/SparkleEffect.tsx ya no se usa; puedes borrarlo.
+
+## Solicitud pública de citas
+- Los pacientes pueden consultar horarios y enviar una solicitud en `/solicitar-cita`; el personal la confirma o rechaza desde la agenda.
+- Las solicitudes no apartan el horario hasta que el personal las confirma.
+- El horario y los límites de disponibilidad se definen en `lib/solicitudes-cita.ts` y se muestran en `app/solicitar-cita/page.tsx`.
+- Esta función agrega el modelo `SolicitudCita` y el enum `EstadoSolicitudCita`. Antes de desplegar, actualiza la base de datos de destino con `npm run db:push` (o `pnpm db:push`).

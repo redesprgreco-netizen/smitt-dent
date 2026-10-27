@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import { LoginForm } from '@/components/auth/login-form'
 
 export default function LoginPage() {
@@ -28,6 +29,12 @@ export default function LoginPage() {
         <div className="mt-5">
           <LoginForm />
         </div>
+        <p className="mt-5 text-center text-sm text-slate-500">
+          ¿Necesitas una cita?{' '}
+          <Link href="/solicitar-cita" className="font-medium text-blue-700 hover:underline">
+            Consulta horarios y solicítala aquí
+          </Link>
+        </p>
       </section>
     </main>
   )

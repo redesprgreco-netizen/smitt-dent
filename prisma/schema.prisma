@@ -36,6 +36,14 @@ enum EstadoCita {
   @@map("estado_cita")
 }
 
+enum EstadoSolicitudCita {
+  pendiente
+  confirmada
+  rechazada
+
+  @@map("estado_solicitud_cita")
+}
+
 enum EstadoExpediente {
   activo
   inactivo
@@ -168,9 +176,31 @@ model Cita {
   doctora    Usuario?    @relation("CitaDoctora", fields: [doctoraId], references: [id], onDelete: SetNull)
   creador    Usuario?    @relation("CitaCreador", fields: [createdBy], references: [id], onDelete: SetNull)
   expediente Expediente? @relation(fields: [expedienteId], references: [id])
+  solicitudPublica SolicitudCita?
 
   @@unique([fecha, hora])
   @@map("citas")
+}
+
+model SolicitudCita {
+  id               Int                 @id @default(autoincrement())
+  nombrePaciente   String              @map("nombre_paciente") @db.VarChar(80)
+  apellidoPaciente String              @map("apellido_paciente") @db.VarChar(80)
+  telefono         String              @db.VarChar(20)
+  correo           String?             @db.VarChar(120)
+  fecha            DateTime            @db.Date
+  hora             DateTime            @db.Time()
+  estado           EstadoSolicitudCita @default(pendiente)
+  ipHash           String              @map("ip_hash") @db.Char(64)
+  citaId           Int?                @unique @map("cita_id")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  cita Cita? @relation(fields: [citaId], references: [id], onDelete: SetNull)
+
+  @@index([ipHash, createdAt])
+  @@index([estado, createdAt])
+  @@map("solicitudes_cita")
 }
 
 model Expediente {

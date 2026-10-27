@@ -9,7 +9,7 @@ const SECRET = new TextEncoder().encode(
 const COOKIE = 'sd_token'
 
 // Rutas públicas
-const PUBLIC_PATHS = ['/login', '/register', '/api/auth/login', '/api/auth/register', '/firmar', '/api/firmar']
+const PUBLIC_PATHS = ['/login', '/register', '/api/auth/login', '/api/auth/register', '/firmar', '/api/firmar', '/solicitar-cita', '/api/solicitar-cita']
 
 // Rutas que cualquier usuario autenticado puede acceder
 const AUTH_PATHS = [
@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
 
   // Permitir rutas públicas y estáticas
   if (
-    PUBLIC_PATHS.some(p => pathname.startsWith(p)) ||
+    PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(`${p}/`)) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {

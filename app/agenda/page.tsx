@@ -8,6 +8,16 @@ import PageHeader from '@/components/ui/PageHeader'
 import type { Cita, Usuario } from '@/types'
 
 interface SessionInfo { id: number; rol: string }
+interface SolicitudCita {
+  id: number
+  nombrePaciente: string
+  apellidoPaciente: string
+  telefono: string
+  correo: string | null
+  fecha: string
+  hora: string
+  estado: 'pendiente' | 'confirmada'
+}
 
 const MESES = [
   'Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -43,6 +53,10 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'dia' | 'mes'>('dia')
   const [newHora, setNewHora] = useState<string | undefined>(undefined)
+  const [solicitudes, setSolicitudes] = useState<SolicitudCita[]>([])
+  const [solicitudesLoading, setSolicitudesLoading] = useState(true)
+  const [solicitudesError, setSolicitudesError] = useState('')
+  const [gestionandoSolicitud, setGestionandoSolicitud] = useState<number | null>(null)
 
   // Cargar sesión + doctoras
   useEffect(() => {
@@ -86,6 +100,55 @@ export default function AgendaPage() {
   }, [year, month, router])
 
   useEffect(() => { loadCitas() }, [loadCitas])
+
+  const loadSolicitudes = useCallback(async () => {
+    setSolicitudesLoading(true)
+    try {
+      const res = await fetch('/api/solicitudes-cita')
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        setSolicitudesError(data.error ?? 'No se pudieron cargar las solicitudes.')
+        return
+      }
+      setSolicitudesError('')
+      setSolicitudes(data.data)
+    } catch {
+      setSolicitudesError('No se pudieron cargar las solicitudes.')
+    } finally {
+      setSolicitudesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (session?.rol === 'admin') loadSolicitudes()
+  }, [session, loadSolicitudes])
+
+  async function gestionarSolicitud(id: number, accion: 'confirmar' | 'rechazar') {
+    const pregunta = accion === 'confirmar'
+      ? '¿Confirmar esta cita? Se agregará a la agenda y dejará de mostrarse como horario libre.'
+      : '¿Rechazar esta solicitud?'
+    if (!confirm(pregunta)) return
+
+    setGestionandoSolicitud(id)
+    setSolicitudesError('')
+    try {
+      const res = await fetch('/api/solicitudes-cita', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, accion }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        setSolicitudesError(data.error ?? 'No se pudo actualizar la solicitud.')
+        return
+      }
+      await Promise.all([loadSolicitudes(), accion === 'confirmar' ? loadCitas() : Promise.resolve()])
+    } catch {
+      setSolicitudesError('No se pudo actualizar la solicitud.')
+    } finally {
+      setGestionandoSolicitud(null)
+    }
+  }
 
   // Abrir modal "nueva cita" si viene ?nueva=1 en la URL
   useEffect(() => {
@@ -190,6 +253,59 @@ export default function AgendaPage() {
           </button>
         }
       />
+
+      {session?.rol === 'admin' && (
+        <section className="card" style={{ padding: 18, marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 600 }}>
+              <i className="ti ti-calendar-question" style={{ marginRight: 7 }} />
+              Solicitudes de cita en línea
+            </h2>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={loadSolicitudes}>
+              <i className="ti ti-refresh" /> Actualizar
+            </button>
+          </div>
+          {solicitudesError && (
+            <p role="alert" style={{ color: '#a93226', fontSize: 13, marginBottom: 10 }}>{solicitudesError}</p>
+          )}
+          {solicitudesLoading ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Cargando solicitudes...</p>
+          ) : solicitudes.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No hay solicitudes pendientes.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {solicitudes.map(solicitud => (
+                <div key={solicitud.id} style={{ border: '1px solid var(--border)', borderRadius: 9, padding: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 260px' }}>
+                    <strong style={{ fontSize: 13.5 }}>{solicitud.nombrePaciente} {solicitud.apellidoPaciente}</strong>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 4 }}>
+                      {new Date(`${solicitud.fecha}T00:00:00.000Z`).toLocaleDateString('es-MX', { dateStyle: 'medium', timeZone: 'UTC' })} · {solicitud.hora}
+                    </div>
+                    <div style={{ fontSize: 12.5, marginTop: 4 }}>
+                      <a href={`tel:${solicitud.telefono}`}>{solicitud.telefono}</a>
+                      {solicitud.correo && <> · <a href={`mailto:${solicitud.correo}`}>{solicitud.correo}</a></>}
+                    </div>
+                  </div>
+                  {solicitud.estado === 'pendiente' ? (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" className="btn btn-primary btn-sm" disabled={gestionandoSolicitud === solicitud.id}
+                        onClick={() => gestionarSolicitud(solicitud.id, 'confirmar')}>
+                        <i className="ti ti-check" /> Confirmar
+                      </button>
+                      <button type="button" className="btn btn-secondary btn-sm" disabled={gestionandoSolicitud === solicitud.id}
+                        onClick={() => gestionarSolicitud(solicitud.id, 'rechazar')}>
+                        <i className="ti ti-x" /> Rechazar
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="pill pill-green">Confirmada</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Barra de herramientas */}
       <div className="agenda-toolbar">
