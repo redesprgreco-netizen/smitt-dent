@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth, notFound, badRequest, serverError } from '@/lib/api'
 import { supabaseAdmin, BUCKET_FIRMAS } from '@/lib/supabase-admin'
+import { asegurarPdfFirmado } from '@/lib/firma-pdf'
 
 type Params = { params: { id: string } }
 
@@ -13,10 +14,14 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!Number.isInteger(id) || id < 1) return badRequest('Firma no válida')
 
   try {
-    const firma = await prisma.firmaContrato.findUnique({ where: { id } })
+    const firma = await prisma.firmaContrato.findUnique({
+      where: { id },
+      include: { contrato: true },
+    })
     if (!firma) return notFound('Firma no encontrada')
     if (firma.estado !== 'firmado') return badRequest('Este documento aún no ha sido firmado')
 
+    await asegurarPdfFirmado(firma)
     const descargar = req.nextUrl.searchParams.get('descargar') === '1'
     const { data, error } = await supabaseAdmin.storage
       .from(BUCKET_FIRMAS)

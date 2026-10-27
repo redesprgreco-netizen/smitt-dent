@@ -1,8 +1,8 @@
 // app/api/firmar/[token]/route.ts — Ruta PÚBLICA, sin autenticación.
 import { NextRequest, NextResponse } from 'next/server'
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import prisma from '@/lib/prisma'
 import { supabaseAdmin, BUCKET_CONTRATOS, BUCKET_FIRMAS } from '@/lib/supabase-admin'
+import { asegurarPdfFirmado, guardarPdfFirmado } from '@/lib/firma-pdf'
 
 type Params = { params: { token: string } }
 
@@ -13,8 +13,20 @@ export async function GET(_req: NextRequest, { params }: Params) {
     include: { contrato: true },
   })
   if (!firma) return NextResponse.json({ ok: false, error: 'Enlace no válido' }, { status: 404 })
+  if (firma.estado === 'reemplazado') {
+    return NextResponse.json({ ok: false, error: 'Este enlace fue sustituido. Solicita el enlace de firma más reciente a la clínica.' }, { status: 410 })
+  }
 
   const firmado = firma.estado === 'firmado'
+  if (firmado) {
+    try {
+      await asegurarPdfFirmado(firma)
+    } catch (error) {
+      console.error('[firmar] No se pudo preparar el PDF firmado:', error)
+      return NextResponse.json({ ok: false, error: 'No se pudo preparar el documento firmado. Contacta a la clínica.' }, { status: 500 })
+    }
+  }
+
   const { data, error } = await supabaseAdmin.storage
     .from(firmado ? BUCKET_FIRMAS : BUCKET_CONTRATOS)
     .createSignedUrl(
@@ -62,6 +74,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (firma.estado === 'firmado') {
     return NextResponse.json({ ok: false, error: 'Este documento ya fue firmado' }, { status: 400 })
   }
+  if (firma.estado !== 'pendiente') {
+    return NextResponse.json({ ok: false, error: 'Este enlace ya no está vigente. Solicita el enlace más reciente a la clínica.' }, { status: 410 })
+  }
 
   try {
     const { firmaDataUrl } = await req.json()
@@ -73,77 +88,22 @@ export async function POST(req: NextRequest, { params }: Params) {
     const buffer = Buffer.from(base64, 'base64')
     const storagePath = `firma-${params.token}.png`
 
-    const { data: originalPdf, error: downloadError } = await supabaseAdmin.storage
+    const { data: originalPdf, error: contratoDownloadError } = await supabaseAdmin.storage
       .from(BUCKET_CONTRATOS)
       .download(firma.contrato.storagePath)
-    if (downloadError || !originalPdf) {
-      console.error('[firmar] No se pudo descargar el contrato original:', downloadError)
+    if (contratoDownloadError || !originalPdf) {
+      console.error('[firmar] No se pudo descargar el contrato original:', contratoDownloadError)
       return NextResponse.json({ ok: false, error: 'No se pudo preparar el documento firmado. Intenta de nuevo.' }, { status: 500 })
     }
 
     const firmadoEn = new Date()
-    const pdf = await PDFDocument.load(await originalPdf.arrayBuffer())
-    const font = await pdf.embedFont(StandardFonts.Helvetica)
-    const signatureImage = await pdf.embedPng(buffer)
-    const lastPage = pdf.getPages()[pdf.getPageCount() - 1]
-    const page = pdf.addPage([lastPage.getWidth(), lastPage.getHeight()])
-    const { width, height } = page.getSize()
-    const margin = 52
-    const signatureWidth = Math.min(width - margin * 2, 300)
-    const signatureHeight = signatureWidth * signatureImage.height / signatureImage.width
-    const signatureY = Math.max(margin + 75, height - 250 - signatureHeight)
-
-    page.drawText('Constancia de firma electrónica', {
-      x: margin,
-      y: height - 70,
-      size: 18,
-      font,
-      color: rgb(0.05, 0.16, 0.32),
+    const signedPdfPath = await guardarPdfFirmado({
+      token: params.token,
+      clienteNombre: firma.clienteNombre,
+      firmadoEn,
+      originalPdf: await originalPdf.arrayBuffer(),
+      firmaPng: buffer,
     })
-    page.drawText(`Firmado por: ${firma.clienteNombre}`, {
-      x: margin,
-      y: height - 115,
-      size: 12,
-      font,
-      color: rgb(0.12, 0.12, 0.12),
-    })
-    page.drawText(`Fecha: ${firmadoEn.toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })}`, {
-      x: margin,
-      y: height - 138,
-      size: 12,
-      font,
-      color: rgb(0.12, 0.12, 0.12),
-    })
-    page.drawText('El paciente declara que leyó y aceptó el contenido del documento.', {
-      x: margin,
-      y: height - 170,
-      size: 11,
-      font,
-      color: rgb(0.12, 0.12, 0.12),
-    })
-    page.drawImage(signatureImage, {
-      x: margin,
-      y: signatureY,
-      width: signatureWidth,
-      height: signatureHeight,
-    })
-    page.drawText('Firma del paciente', {
-      x: margin,
-      y: signatureY - 18,
-      size: 10,
-      font,
-      color: rgb(0.35, 0.35, 0.35),
-    })
-
-    const signedPdfPath = `documento-firmado-${params.token}.pdf`
-    const signedPdf = await pdf.save()
-    const { error: pdfUploadError } = await supabaseAdmin.storage
-      .from(BUCKET_FIRMAS)
-      .upload(signedPdfPath, signedPdf, { contentType: 'application/pdf', upsert: true })
-    if (pdfUploadError) {
-      console.error('[firmar] No se pudo guardar el documento firmado:', pdfUploadError)
-      return NextResponse.json({ ok: false, error: 'No se pudo guardar el documento firmado. Intenta de nuevo.' }, { status: 500 })
-    }
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from(BUCKET_FIRMAS)

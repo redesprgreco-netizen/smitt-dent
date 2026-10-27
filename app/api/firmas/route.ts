@@ -13,13 +13,25 @@ export async function GET(req: NextRequest) {
 
   const firmas = await prisma.firmaContrato.findMany({
     where: expedienteId ? { expedienteId: parseInt(expedienteId) } : undefined,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: {
-      contrato: { select: { nombre: true } },
+      contrato: { select: { id: true, nombre: true } },
       expediente: { select: { id: true, folio: true, nombre: true, apellido: true } },
     },
   })
-  return ok(firmas)
+  const pendientesVistos = new Set<string>()
+  const firmasVisibles = firmas.filter(firma => {
+    if (firma.estado === 'reemplazado') return false
+    if (firma.estado !== 'pendiente') return true
+    const identidad = firma.expedienteId != null
+      ? `expediente:${firma.expedienteId}`
+      : `cliente:${firma.clienteNombre.toLocaleLowerCase()}:${firma.clienteTelefono ?? ''}`
+    const key = `${firma.contratoId}:${identidad}`
+    if (pendientesVistos.has(key)) return false
+    pendientesVistos.add(key)
+    return true
+  })
+  return ok(firmasVisibles)
 }
 
 // Crea una nueva solicitud de firma y devuelve el link único
@@ -51,7 +63,7 @@ export async function POST(req: NextRequest) {
           clienteTelefono: telefono,
           estado: 'pendiente',
         },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
 
     const firma = pendiente ?? await prisma.firmaContrato.create({
@@ -63,6 +75,18 @@ export async function POST(req: NextRequest) {
         clienteTelefono: telefono,
         creadoPor: session.sub,
       },
+    })
+
+    await prisma.firmaContrato.updateMany({
+      where: {
+        id: { lt: firma.id },
+        contratoId: contrato.id,
+        estado: 'pendiente',
+        ...(expediente
+          ? { expedienteId: expediente }
+          : { expedienteId: null, clienteNombre: nombre, clienteTelefono: telefono }),
+      },
+      data: { estado: 'reemplazado' },
     })
 
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/+$/, '')

@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import prisma from '@/lib/prisma'
 import { requireAuth, ok, notFound, serverError } from '@/lib/api'
 import { supabaseAdmin, BUCKET_CONTRATOS, BUCKET_FIRMAS } from '@/lib/supabase-admin'
+import { asegurarPdfFirmado } from '@/lib/firma-pdf'
 
 type Params = { params: { id: string } }
 
@@ -22,6 +23,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     if (!firma) return notFound('Firma no encontrada')
 
     const firmado = firma.estado === 'firmado'
+    if (firmado) await asegurarPdfFirmado(firma)
     const pdfPath = firmado
       ? `documento-firmado-${firma.token}.pdf`
       : firma.contrato.storagePath

@@ -27,6 +27,7 @@
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "next": "14.2.29",
+    "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
