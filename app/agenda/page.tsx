@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import CalendarGrid from '@/components/agenda/CalendarGrid'
 import AppointmentModal from '@/components/agenda/AppointmentModal'
+import DayView from '@/components/agenda/DayView'
+import PageHeader from '@/components/ui/PageHeader'
 import type { Cita, Usuario } from '@/types'
 
 interface SessionInfo { id: number; rol: string }
@@ -39,6 +41,8 @@ export default function AgendaPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingCita, setEditingCita] = useState<Cita | null>(null)
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<'dia' | 'mes'>('dia')
+  const [newHora, setNewHora] = useState<string | undefined>(undefined)
 
   // Cargar sesión + doctoras
   useEffect(() => {
@@ -87,6 +91,7 @@ export default function AgendaPage() {
   useEffect(() => {
     if (searchParams.get('nueva') === '1') {
       setEditingCita(null)
+      setNewHora(undefined)
       setModalOpen(true)
     }
   }, [searchParams])
@@ -134,45 +139,89 @@ export default function AgendaPage() {
 
   function openNew() {
     setEditingCita(null)
+    setNewHora(undefined)
     setModalOpen(true)
+  }
+
+  function openNewAt(hora: string) {
+    setEditingCita(null)
+    setNewHora(hora)
+    setModalOpen(true)
+  }
+
+  // Navegación por día (mantiene mes/año sincronizados para cargar las citas correctas)
+  function shiftDay(delta: number) {
+    const [y, m, d] = selectedDate.split('-').map(Number)
+    const nueva = new Date(y, m - 1, d + delta)
+    setSelectedDate(`${nueva.getFullYear()}-${String(nueva.getMonth() + 1).padStart(2, '0')}-${String(nueva.getDate()).padStart(2, '0')}`)
+    setYear(nueva.getFullYear())
+    setMonth(nueva.getMonth())
+  }
+
+  function switchToDay() {
+    // Si el día seleccionado quedó fuera del mes que se está viendo, saltar a un día de ese mes
+    const [sy, sm] = selectedDate.split('-').map(Number)
+    if (sy !== year || sm - 1 !== month) {
+      const hoy = new Date()
+      setSelectedDate(
+        hoy.getFullYear() === year && hoy.getMonth() === month
+          ? todayKey()
+          : `${year}-${String(month + 1).padStart(2, '0')}-01`
+      )
+    }
+    setView('dia')
+  }
+
+  function goToday() {
+    const hoy = new Date()
+    setYear(hoy.getFullYear())
+    setMonth(hoy.getMonth())
+    setSelectedDate(todayKey())
   }
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontFamily: 'Sora', fontSize: 22, fontWeight: 700 }}>Agenda</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
-            Calendario compartido — todas las doctoras
-          </p>
-        </div>
-        <button className="btn btn-primary" onClick={openNew}>
-          <i className="ti ti-plus" /> Anotar cita
-        </button>
-      </div>
+      <PageHeader
+        title="Agenda"
+        subtitle="Calendario compartido — todas las doctoras"
+        actions={
+          <button className="btn btn-primary" onClick={openNew}>
+            <i className="ti ti-plus" /> Anotar cita
+          </button>
+        }
+      />
 
-      {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => changeMonth(-1)} style={{
-            background: '#fff', border: '1px solid var(--border)', borderRadius: 8,
-            width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-          }}>
+      {/* Barra de herramientas */}
+      <div className="agenda-toolbar">
+        <div className="agenda-nav">
+          <button
+            className="agenda-nav-btn"
+            aria-label={view === 'dia' ? 'Día anterior' : 'Mes anterior'}
+            onClick={() => (view === 'dia' ? shiftDay(-1) : changeMonth(-1))}
+          >
             <i className="ti ti-chevron-left" />
           </button>
-          <span style={{ fontFamily: 'Sora', fontSize: 17, fontWeight: 700, minWidth: 180, textAlign: 'center' }}>
-            {MESES[month]} {year}
+          <span className="agenda-nav-label">
+            {view === 'dia' ? formatSelectedDateLabel() : `${MESES[month]} ${year}`}
           </span>
-          <button onClick={() => changeMonth(1)} style={{
-            background: '#fff', border: '1px solid var(--border)', borderRadius: 8,
-            width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-          }}>
+          <button
+            className="agenda-nav-btn"
+            aria-label={view === 'dia' ? 'Día siguiente' : 'Mes siguiente'}
+            onClick={() => (view === 'dia' ? shiftDay(1) : changeMonth(1))}
+          >
             <i className="ti ti-chevron-right" />
           </button>
-          <button onClick={() => { setYear(new Date().getFullYear()); setMonth(new Date().getMonth()); setSelectedDate(todayKey()) }}
-            className="btn btn-secondary btn-sm" style={{ marginLeft: 8 }}>
+          <button onClick={goToday} className="btn btn-secondary btn-sm" style={{ marginLeft: 8 }}>
             Hoy
+          </button>
+        </div>
+
+        <div className="seg-control" role="tablist" aria-label="Vista de la agenda">
+          <button role="tab" aria-selected={view === 'dia'} className={view === 'dia' ? 'active' : ''} onClick={switchToDay}>
+            <i className="ti ti-layout-rows" /> Día
+          </button>
+          <button role="tab" aria-selected={view === 'mes'} className={view === 'mes' ? 'active' : ''} onClick={() => setView('mes')}>
+            <i className="ti ti-calendar-month" /> Mes
           </button>
         </div>
 
@@ -187,28 +236,42 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* Calendario */}
-      <CalendarGrid
-        year={year} month={month}
-        citasByDay={citasByDay}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-      />
-
-      {/* Lista del día seleccionado */}
-      <div style={{ marginTop: 24 }}>
-        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.9px', marginBottom: 14 }}>
-          Citas del día — {formatSelectedDateLabel()}
-        </p>
-
-        {loading ? (
+      {view === 'dia' ? (
+        loading ? (
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Cargando...</p>
-        ) : citasDelDia.length === 0 ? (
-          <div className="card" style={{ padding: '32px', textAlign: 'center' }}>
-            <i className="ti ti-calendar-off" style={{ fontSize: 32, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }} />
-            <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>No hay citas para este día</p>
-          </div>
-        ) : citasDelDia.map(cita => (
+        ) : (
+          <DayView
+            citas={citasDelDia}
+            doctoras={doctoras}
+            isToday={selectedDate === todayKey()}
+            onOpenCita={openEdit}
+            onCreateAt={openNewAt}
+          />
+        )
+      ) : (
+        <>
+          {/* Calendario */}
+          <CalendarGrid
+            year={year} month={month}
+            citasByDay={citasByDay}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+
+          {/* Lista del día seleccionado */}
+          <div style={{ marginTop: 24 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.9px', marginBottom: 14 }}>
+              Citas del día — {formatSelectedDateLabel()}
+            </p>
+
+            {loading ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Cargando...</p>
+            ) : citasDelDia.length === 0 ? (
+              <div className="card" style={{ padding: '32px', textAlign: 'center' }}>
+                <i className="ti ti-calendar-off" style={{ fontSize: 32, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }} />
+                <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>No hay citas para este día</p>
+              </div>
+            ) : citasDelDia.map(cita => (
               <div key={cita.id} className="card" style={{
                 marginBottom: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
                 cursor: 'pointer',
@@ -240,9 +303,10 @@ export default function AgendaPage() {
                   {cita.estado}
                 </span>
               </div>
-            ))
-        }
-      </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {session && (
         <AppointmentModal
@@ -250,6 +314,7 @@ export default function AgendaPage() {
           onClose={() => setModalOpen(false)}
           onSaved={loadCitas}
           defaultDate={selectedDate}
+          defaultHora={newHora}
           doctoras={doctoras}
           currentUserId={session.id}
           currentUserRol={session.rol}

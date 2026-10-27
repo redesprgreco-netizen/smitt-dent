@@ -1,8 +1,6 @@
 'use client'
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { useSparkle } from './SparkleEffect'
 
 interface SidebarProps {
   rol: string
@@ -22,17 +20,10 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ rol, open, onNavigate }: SidebarProps) {
   const pathname = usePathname()
-  const sparkle = useSparkle()
   let lastSection = ''
 
   return (
-    <nav
-      className={`layout-sidebar${open ? ' open' : ''}`}
-      onClickCapture={(e) => sparkle(e.clientX, e.clientY)}
-    >
-      <Link href="/dashboard" className="sidebar-brand" onClick={onNavigate}>
-        <Image src="/dentista.jpg" alt="Smitt-Dent" width={520} height={320} priority />
-      </Link>
+    <nav className={`layout-sidebar${open ? ' open' : ''}`} aria-label="Navegación principal">
       <div style={{ flex: 1 }}>
         {NAV_ITEMS.filter(item => !item.adminOnly || rol === 'admin').map(item => {
           const showSection = item.section && item.section !== lastSection
@@ -44,26 +35,18 @@ export default function Sidebar({ rol, open, onNavigate }: SidebarProps) {
               {showSection && (
                 <div className="nav-section-label">{item.section}</div>
               )}
-              <Link href={item.href} className={`nav-item${isActive ? ' active' : ''}`} onClick={onNavigate}>
+              <Link
+                href={item.href}
+                className={`nav-item${isActive ? ' active' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={onNavigate}
+              >
                 <i className={`ti ${item.icon}`} />
                 {item.label}
               </Link>
             </div>
           )
         })}
-      </div>
-
-      <div style={{ paddingBottom: 16 }}>
-        {rol === 'admin' && (
-          <Link
-            href="/configuracion/usuarios"
-            className={`nav-item${pathname.startsWith('/configuracion/usuarios') ? ' active' : ''}`}
-            onClick={onNavigate}
-          >
-            <i className="ti ti-users" />
-            Usuarios
-          </Link>
-        )}
       </div>
     </nav>
   )

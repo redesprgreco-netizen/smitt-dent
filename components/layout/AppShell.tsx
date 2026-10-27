@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Topbar from './Topbar'
 import Sidebar from './Sidebar'
-import { SparkleProvider } from './SparkleEffect'
 import PaymentAnnouncement from './PaymentAnnouncement'
 
 interface AppShellProps {
@@ -23,7 +22,7 @@ export default function AppShell({ nombre, apellido, rol, children }: AppShellPr
   }, [pathname])
 
   return (
-    <SparkleProvider>
+    <>
       <Topbar nombre={nombre} apellido={apellido} rol={rol} onMenuClick={() => setSidebarOpen(o => !o)} />
       <Sidebar rol={rol} open={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
       {sidebarOpen && (
@@ -35,6 +34,6 @@ export default function AppShell({ nombre, apellido, rol, children }: AppShellPr
           {children}
         </div>
       </main>
-    </SparkleProvider>
+    </>
   )
 }

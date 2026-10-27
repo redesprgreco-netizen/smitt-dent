@@ -25,7 +25,7 @@ export default function ExpedienteDetallePage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
-  const [tab, setTab] = useState<Tab>('ficha')
+  const [tab, setTab] = useState<Tab>('odontograma')
   const [exp, setExp] = useState<ExpedienteDetalle | null>(null)
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<{ id: number; rol: string } | null>(null)
@@ -275,14 +275,58 @@ export default function ExpedienteDetallePage() {
         </div>
       </div>
 
+      {/* Alertas clínicas: siempre visibles, sin entrar a otra pestaña */}
+      {(() => {
+        const a = exp.antecedentes
+        if (!a) {
+          return (
+            <div className="clinic-alert clinic-alert-warn">
+              <i className="ti ti-alert-circle" />
+              <div>
+                <strong>Sin antecedentes patológicos capturados.</strong>{' '}
+                Revísalos antes de iniciar un tratamiento.
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={() => setTab('ficha')}>Capturar ahora</button>
+            </div>
+          )
+        }
+        const alertas: string[] = []
+        if (a.alergicoAnestesico) alertas.push(`Alergia a anestésicos${a.alergicoDetalle ? `: ${a.alergicoDetalle}` : ''}`)
+        if (a.alergiasGenerales) alertas.push(`Alergias${a.alergiasCuales ? `: ${a.alergiasCuales}` : ''}`)
+        if (a.diabetesPersonal) alertas.push('Diabetes')
+        if (a.presionArterial) alertas.push('Presión arterial alterada')
+        if (a.enfCardiovascular) alertas.push('Enfermedad cardiovascular')
+        if (a.feReumatica) alertas.push('Fiebre reumática')
+        if (a.sangradoAnormal) alertas.push('Sangrado anormal')
+        if (a.hepatitis) alertas.push('Hepatitis')
+        if (a.vihSida) alertas.push('VIH / SIDA')
+        if (a.problemasRenales) alertas.push('Problemas renales')
+        if (a.anemia) alertas.push('Anemia')
+        if (a.asma) alertas.push('Asma')
+        if (a.embarazada) alertas.push('Embarazo')
+        if (a.tratamientoActual) alertas.push(`En tratamiento médico${a.tratamientoActualDetalle ? `: ${a.tratamientoActualDetalle}` : ''}`)
+        if (alertas.length === 0) return null
+        return (
+          <div className="clinic-alert clinic-alert-danger" role="alert">
+            <i className="ti ti-alert-triangle" />
+            <div style={{ flex: 1 }}>
+              <strong>Alertas clínicas</strong>
+              <div className="clinic-alert-chips">
+                {alertas.map(t => <span key={t} className="clinic-chip">{t}</span>)}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Tabs */}
       <div className="tabs-bar">
         {([
-          { key: 'ficha', label: 'Ficha clínica', icon: 'ti-clipboard-text' },
-          { key: 'historial', label: 'Historial clínico', icon: 'ti-notes' },
           { key: 'odontograma', label: 'Odontograma', icon: 'ti-tooth' },
+          { key: 'historial', label: 'Historial clínico', icon: 'ti-notes' },
           { key: 'presupuesto', label: 'Plan de tratamiento', icon: 'ti-list-check' },
           { key: 'pagos', label: 'Pagos', icon: 'ti-cash' },
+          { key: 'ficha', label: 'Ficha y antecedentes', icon: 'ti-clipboard-text' },
           { key: 'contratos', label: 'Contratos', icon: 'ti-signature' },
         ] as const).map(t => (
           <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>

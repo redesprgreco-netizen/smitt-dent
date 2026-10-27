@@ -7,6 +7,7 @@ interface AppointmentModalProps {
   onClose: () => void
   onSaved: () => void
   defaultDate: string
+  defaultHora?: string
   doctoras: Pick<Usuario, 'id' | 'nombre' | 'apellido' | 'colorAgenda'>[]
   currentUserId: number
   currentUserRol: string
@@ -14,7 +15,7 @@ interface AppointmentModalProps {
 }
 
 export default function AppointmentModal({
-  open, onClose, onSaved, defaultDate, doctoras, currentUserId, currentUserRol, editingCita,
+  open, onClose, onSaved, defaultDate, defaultHora, doctoras, currentUserId, currentUserRol, editingCita,
 }: AppointmentModalProps) {
   const [form, setForm] = useState({
     nombrePaciente: '', apellidoPaciente: '', asunto: '', fecha: defaultDate, hora: '09:00', notas: '',
@@ -37,10 +38,10 @@ export default function AppointmentModal({
       setEstadoActual(editingCita.estado)
       setEsTemporal(Boolean(editingCita.medicoTemporalNombre))
     } else {
-      setForm(f => ({ ...f, fecha: defaultDate }))
+      setForm(f => ({ ...f, fecha: defaultDate, hora: defaultHora ?? f.hora }))
       setEsTemporal(false)
     }
-  }, [editingCita, defaultDate, open])
+  }, [editingCita, defaultDate, defaultHora, open])
 
   if (!open) return null
 

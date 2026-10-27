@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Image from 'next/image'
-import { useSparkle } from './SparkleEffect'
+import GlobalSearch from './GlobalSearch'
 
 interface TopbarProps {
   nombre: string
@@ -14,7 +14,6 @@ interface TopbarProps {
 export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarProps) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
-  const sparkle = useSparkle()
   const initials = `${nombre[0]}${apellido[0]}`.toUpperCase()
 
   async function handleLogout() {
@@ -23,7 +22,7 @@ export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarPro
   }
 
   return (
-    <header className="layout-topbar" onClickCapture={(e) => sparkle(e.clientX, e.clientY)}>
+    <header className="layout-topbar">
       {/* Botón menú (solo móvil) */}
       <button
         onClick={onMenuClick}
@@ -37,33 +36,34 @@ export default function Topbar({ nombre, apellido, rol, onMenuClick }: TopbarPro
         <i className="ti ti-menu-2" />
       </button>
 
-      {/* Logo */}
+      {/* Logo (único: el sidebar ya no lo repite) */}
       <a href="/dashboard" className="topbar-logo-link" aria-label="Ir al panel principal">
         <Image src="/dentista.jpg" alt="Smitt-Dent" width={520} height={320} priority />
       </a>
 
-      {/* Right side */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16, position: 'relative' }}>
-        <i className="ti ti-bell topbar-bell" style={{ fontSize: 20, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }} />
+      {/* Buscador global de pacientes */}
+      <GlobalSearch />
 
-        {/* Avatar + menu */}
+      {/* Usuario */}
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
         <div style={{ position: 'relative' }}>
-          <div
+          <button
             onClick={() => setMenuOpen(o => !o)}
             className="topbar-avatar"
+            aria-label="Menú de usuario"
+            aria-expanded={menuOpen}
             style={{
               width: 34, height: 34, borderRadius: '50%', background: 'var(--blue-accent)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer',
-              userSelect: 'none',
+              userSelect: 'none', border: 'none',
             }}
           >
             {initials}
-          </div>
+          </button>
 
           {menuOpen && (
             <>
-              {/* Backdrop */}
               <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setMenuOpen(false)} />
               <div className="topbar-dropdown" style={{
                 position: 'absolute', top: 42, right: 0, zIndex: 300,
