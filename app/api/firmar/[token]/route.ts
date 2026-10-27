@@ -1,71 +1,86 @@
 // app/api/firmar/[token]/route.ts — Ruta PÚBLICA, sin autenticación.
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { supabaseAdmin, BUCKET_CONTRATOS, BUCKET_FIRMAS } from '@/lib/supabase-admin'
+import { supabaseAdmin, BUCKET_CONTRATOS, BUCKET_FIRMAS, supabaseConfigured } from '@/lib/supabase-admin'
 import { asegurarPdfFirmado, guardarPdfFirmado } from '@/lib/firma-pdf'
 
 type Params = { params: { token: string } }
 
 // Devuelve los datos del documento a firmar (nombre del cliente, link temporal del PDF, estado)
 export async function GET(_req: NextRequest, { params }: Params) {
-  const firma = await prisma.firmaContrato.findUnique({
-    where: { token: params.token },
-    include: { contrato: true },
-  })
-  if (!firma) return NextResponse.json({ ok: false, error: 'Enlace no válido' }, { status: 404 })
-  if (firma.estado === 'reemplazado') {
-    return NextResponse.json({ ok: false, error: 'Este enlace fue sustituido. Solicita el enlace de firma más reciente a la clínica.' }, { status: 410 })
-  }
-
-  const firmado = firma.estado === 'firmado'
-  if (firmado) {
-    try {
-      await asegurarPdfFirmado(firma)
-    } catch (error) {
-      console.error('[firmar] No se pudo preparar el PDF firmado:', error)
-      return NextResponse.json({ ok: false, error: 'No se pudo preparar el documento firmado. Contacta a la clínica.' }, { status: 500 })
-    }
-  }
-
-  const { data, error } = await supabaseAdmin.storage
-    .from(firmado ? BUCKET_FIRMAS : BUCKET_CONTRATOS)
-    .createSignedUrl(
-      firmado ? `documento-firmado-${firma.token}.pdf` : firma.contrato.storagePath,
-      60 * 60,
+  if (!supabaseConfigured()) {
+    console.error('[firmar] Supabase Storage no está configurado')
+    return NextResponse.json(
+      { ok: false, error: 'El servicio de documentos no está configurado. Contacta a la clínica.' },
+      { status: 503 },
     )
-  const { data: downloadData, error: downloadError } = firmado
-    ? await supabaseAdmin.storage
-      .from(BUCKET_FIRMAS)
-      .createSignedUrl(`documento-firmado-${firma.token}.pdf`, 60 * 60, { download: 'documento-firmado.pdf' })
-    : { data: null, error: null }
-
-  if (error || downloadError || !data?.signedUrl || (firmado && !downloadData?.signedUrl)) {
-    const storageError = error ?? downloadError
-    console.error('[firmar] No se pudo generar el enlace del documento:', storageError)
-    const detail = storageError?.message
-    return NextResponse.json({
-      ok: false,
-      error: detail
-        ? `No se pudo cargar el documento (${detail}). Contacta a la clínica.`
-        : 'No se pudo cargar el documento. Contacta a la clínica.',
-    }, { status: 500 })
   }
 
-  return NextResponse.json({
-    ok: true,
-    data: {
-      clienteNombre: firma.clienteNombre,
-      estado: firma.estado,
-      firmadoEn: firma.firmadoEn,
-      pdfUrl: data.signedUrl,
-      downloadUrl: downloadData?.signedUrl ?? null,
-      contratoNombre: firma.contrato.nombre,
-    },
-  })
+  try {
+    const firma = await prisma.firmaContrato.findUnique({
+      where: { token: params.token },
+      include: { contrato: true },
+    })
+    if (!firma) return NextResponse.json({ ok: false, error: 'Enlace no válido' }, { status: 404 })
+    if (firma.estado === 'reemplazado') {
+      return NextResponse.json({ ok: false, error: 'Este enlace fue sustituido. Solicita el enlace de firma más reciente a la clínica.' }, { status: 410 })
+    }
+
+    const firmado = firma.estado === 'firmado'
+    if (firmado) {
+      await asegurarPdfFirmado(firma)
+    }
+
+    const { data, error } = await supabaseAdmin.storage
+      .from(firmado ? BUCKET_FIRMAS : BUCKET_CONTRATOS)
+      .createSignedUrl(
+        firmado ? `documento-firmado-${firma.token}.pdf` : firma.contrato.storagePath,
+        60 * 60,
+      )
+    const { data: downloadData, error: downloadError } = firmado
+      ? await supabaseAdmin.storage
+        .from(BUCKET_FIRMAS)
+        .createSignedUrl(`documento-firmado-${firma.token}.pdf`, 60 * 60, { download: 'documento-firmado.pdf' })
+      : { data: null, error: null }
+
+    if (error || downloadError || !data?.signedUrl || (firmado && !downloadData?.signedUrl)) {
+      console.error('[firmar] No se pudo generar el enlace del documento:', error ?? downloadError)
+      return NextResponse.json(
+        { ok: false, error: 'No se pudo cargar el documento. Verifica la configuración de Storage y contacta a la clínica.' },
+        { status: 503 },
+      )
+    }
+
+    return NextResponse.json({
+      ok: true,
+      data: {
+        clienteNombre: firma.clienteNombre,
+        estado: firma.estado,
+        firmadoEn: firma.firmadoEn,
+        pdfUrl: data.signedUrl,
+        downloadUrl: downloadData?.signedUrl ?? null,
+        contratoNombre: firma.contrato.nombre,
+      },
+    })
+  } catch (error) {
+    console.error('[firmar] No se pudo cargar el documento:', error)
+    return NextResponse.json(
+      { ok: false, error: 'No se pudo cargar el documento. Contacta a la clínica.' },
+      { status: 500 },
+    )
+  }
 }
 
 // Recibe la firma (imagen en base64) y marca el documento como firmado
 export async function POST(req: NextRequest, { params }: Params) {
+  if (!supabaseConfigured()) {
+    console.error('[firmar] Supabase Storage no está configurado')
+    return NextResponse.json(
+      { ok: false, error: 'El servicio de documentos no está configurado. Contacta a la clínica.' },
+      { status: 503 },
+    )
+  }
+
   const firma = await prisma.firmaContrato.findUnique({
     where: { token: params.token },
     include: { contrato: true },
