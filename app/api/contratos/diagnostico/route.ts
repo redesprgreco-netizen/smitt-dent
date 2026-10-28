@@ -1,53 +1,38 @@
-// app/api/diag-db/route.ts
-// TEMPORAL y público: muestra QUÉ conexión a la base de datos está usando Vercel
-// (sin mostrar la contraseña). BÓRRALO cuando termines de arreglar el problema.
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
-import { createHash } from 'crypto'
+import { requireAuth } from '@/lib/api'
+import { supabaseAdmin, supabaseInfo, SUPABASE_URL, BUCKET_CONTRATOS, BUCKET_FIRMAS } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
-function describir(nombre: string, raw: string | undefined) {
-  if (!raw) return { variable: nombre, existe: false }
-  const tieneComillas = /^["']|["']$/.test(raw)
-  const tieneEspacios = raw !== raw.trim()
-  const limpio = raw.trim().replace(/^["']|["']$/g, '')
-  try {
-    const u = new URL(limpio)
-    const pass = decodeURIComponent(u.password)
-    return {
-      variable: nombre,
-      existe: true,
-      usuario: decodeURIComponent(u.username),
-      largoPassword: decodeURIComponent(u.password).length,
-      passwordPrimerCaracter: pass.slice(0, 1),
-      passwordUltimoCaracter: pass.slice(-1),
-      passwordHuella: createHash('sha256').update(pass).digest('hex').slice(0, 8),
-      passwordTieneCorchetes: /^\[.*\]$/.test(decodeURIComponent(u.password)),
-      host: u.hostname,
-      puerto: u.port,
-      baseDeDatos: u.pathname,
-      parametros: u.search,
-      tieneComillas,
-      tieneEspacios,
-    }
-  } catch {
-    return { variable: nombre, existe: true, urlInvalida: true, tieneComillas, tieneEspacios }
-  }
-}
-
 export async function GET() {
+  const auth = await requireAuth(['admin'])
+  if ('status' in auth) return auth
+
   const resultado: Record<string, unknown> = {
-    databaseUrl: describir('DATABASE_URL', process.env.DATABASE_URL),
-    directUrl: describir('DIRECT_URL', process.env.DIRECT_URL),
-    entorno: process.env.VERCEL_ENV ?? 'local',
-    despliegue: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'n/d',
+    version: 'storage-diag',
+    config: supabaseInfo(),
   }
+
   try {
-    await prisma.$queryRaw`SELECT 1`
-    resultado.conexion = { ok: true }
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/version`, { cache: 'no-store' })
+    resultado.alcanzable = { ok: true, httpStatus: r.status }
   } catch (e: any) {
-    resultado.conexion = { ok: false, error: String(e?.message ?? e).slice(0, 300) }
+    resultado.alcanzable = { ok: false, error: e?.message, causa: e?.cause?.code ?? e?.cause?.message }
   }
+
+  try {
+    const { data, error } = await supabaseAdmin.storage.listBuckets()
+    resultado.buckets = error
+      ? { ok: false, error: error.message }
+      : {
+          ok: true,
+          lista: data?.map(b => b.name),
+          existeContratos: data?.some(b => b.name === BUCKET_CONTRATOS),
+          existeFirmas: data?.some(b => b.name === BUCKET_FIRMAS),
+        }
+  } catch (e: any) {
+    resultado.buckets = { ok: false, error: e?.message }
+  }
+
   return NextResponse.json(resultado)
 }
