@@ -18,8 +18,8 @@ function limpiarKey(raw: string): string {
   return raw.trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '')
 }
 
-export const SUPABASE_URL = limpiarUrl(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '')
-const serviceKey = limpiarKey(process.env.SUPABASE_SERVICE_ROLE_KEY ?? '')
+export const SUPABASE_URL = limpiarUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '')
+const serviceKey = limpiarKey(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '')
 
 // No lanzamos error en build time — solo en runtime si falta la config.
 export const supabaseAdmin = createClient(
